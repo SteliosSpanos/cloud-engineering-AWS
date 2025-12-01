@@ -12,5 +12,5 @@ The service we are going to use is called **S3 Storage**:
 
 ## Architecure
 
-![Architecture Diagram](~/Pictures/Screenshots/'Screenshot From 2025-12-01 22-06-11.png')
+![Architecture Diagram](~/Pictures/Screenshots/diagram.png)
 
