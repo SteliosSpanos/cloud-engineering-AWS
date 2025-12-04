@@ -25,6 +25,11 @@ Implementing identity and access management with tag-based access control for EC
 
 **Technologies:** AWS IAM, EC2, Tag-Based Access Control, JSON Policies
 
+### 3. [Build your own Virtual Private Cloud](./virtual-private-cloud/)
+Building foundational AWS networking infrastructure. Created an isolated VPC with public subnets, configured Internet Gateway, and learned Availability Zones.
+
+**Technologies:** AWS VPC, Subnets, Internet Gateway, CIDR, Availability Zones
+
 ---
 
 ## Goals
