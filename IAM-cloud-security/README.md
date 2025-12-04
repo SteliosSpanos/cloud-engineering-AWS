@@ -14,21 +14,39 @@ We'll also launch two **EC2** instances and control who has access to them by cr
 
 ## Implementation Steps
 
+### 1. Initial AWS Setup and Region Selection
+
 Once I created my AWS account I gained access to the Management Console. I headed over to the EC2 service and first and foremost I changed the region to be the closest to me.
+
+### 2. Launch Production EC2 Instance
 
 In the EC2 console I launched a new instance with a name I gave along with a tag and more specifically 'Key:Env, Value:production'. I proceeded by choosing the virtual computer's settings like AMI (Amazon Machine Image) and instance type. I selected the Amazon Linux 2023 AMI and chose the t2.micro instance type since it's free-tier eligible.
 
+### 3. Launch Development EC2 Instance
+
 After launching the production instance, I created a second EC2 instance following the same process but this time tagged it with 'Key:Env, Value:development'. These tags would become critical later for implementing tag-based access control in my IAM policies. With both instances running, I had my infrastructure foundation in place.
+
+### 4. Create Custom IAM Policy with Tag-Based Conditions
 
 Next, I navigated to the IAM service to create a custom permission policy. I wanted to ensure, for example, that our new intern would only have access to the development instance and couldn't accidentally (or intentionally) modify or terminate the production instance. I created a new policy using JSON format with conditions that check for the "Env:development" tag. This policy grants EC2 permissions like starting, stopping, and describing instances, but only when the "Env" tag equals "development". This is the principle of least privilege in action - the intern gets exactly what they need, nothing more.
 
+### 5. Configure Account Alias
+
 Before creating the intern's user account, I set up an account alias to make the login URL more user-friendly. Instead of a long URL with random account numbers, the alias creates something memorable like "mycompany-aws" which makes onboarding smoother and more professional.
+
+### 6. Create IAM Group and Attach Policy
 
 I then created an IAM group called "Interns" and attached my custom development-only policy to it (the one above). Using groups instead of attaching policies directly to users is a best practice because it makes permission management scalable. When you have multiple interns, they all inherit the same permissions from the group automatically.
 
+### 7. Create IAM User and Assign to Group
+
 With the group configured, I created a new IAM user for the intern with console access enabled. I added this user to the Interns group, which automatically applied the development-only permissions. I generated a temporary password and made sure to require a password change on first login for security.
 
+### 8. Test Permissions and Validate Access Controls
+
 To verify everything worked correctly, I logged out of my root account and logged in using the intern's credentials. I navigated to EC2 and confirmed that I could see both instances but could only perform actions on the development instance. When I tried to stop the production instance, I received an "access denied" error - exactly as intended. This testing phase is crucial because it validates that your security policies work before giving access to real users.
+
+### 9. Cleanup Resources
 
 Finally, once I confirmed the project was successful, I cleaned up all resources to avoid unnecessary costs. I terminated both EC2 instances, deleted the IAM user, removed the IAM group, and deleted the custom policy. I also verified in the billing dashboard that no resources were still running.
 
