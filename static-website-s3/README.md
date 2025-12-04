@@ -16,9 +16,15 @@ The service we are going to use is called **S3 Storage**:
 
 ## Implementation Steps
 
+### 1. AWS Account Setup and S3 Bucket Creation
+
 I started by creating an AWS account, which gave me access to the AWS Management Console. From there, I navigated to the S3 service and created a new bucket. The bucket name had to be globally unique across all AWS accounts.
 
+### 2. Configuring Access Controls
+
 The most critical decision came when configuring access controls. By default, S3 buckets are private, but hosting a public website requires public read access. I enabled ACLs (Access Control Lists) on the bucket, which allowed me to grant public read permissions to the uploaded objects. This differs from using bucket policies, but for a simple static website, ACLs provided a straightforward approach.
+
+### 3. Uploading Content and Enabling Static Website Hosting
 
 After uploading my `index.html` and other static assets to the bucket, I configured the bucket for static website hosting through the S3 console. This feature essentially turns the bucket into a web server, serving the index document when users access the bucket's website endpoint. The final step was making the bucket and its contents public, which involved adjusting the bucket's public access settings and applying the appropriate ACL permissions to the objects.
 
