@@ -4,7 +4,7 @@ A collection of hands-on AWS projects documenting my learning journey in cloud c
 
 ## About
 
-I'm a Computer Science student building practical experience with AWS services. This repository showcases projects that demonstrate cloud architecture, security best practices, and real-world problem-solving.
+I'm a Computer Science student gaining practical experience with AWS services. This repository showcases projects that demonstrate cloud architecture, security best practices, and real-world problem-solving.
 
 Each project includes:
 - Architecture diagrams and design decisions
