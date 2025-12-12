@@ -30,6 +30,11 @@ Building foundational AWS networking infrastructure. Created an isolated VPC wit
 
 **Technologies:** AWS VPC, Subnets, Internet Gateway, CIDR, Availability Zones
 
+### 4. [VPC Traffic Flow and Security](./vpc-traffic-flow-security/)
+Advanced VPC networking concepts including security groups, Network ACLs, and traffic flow control. Building on the foundational VPC project to implement granular security controls.
+
+**Technologies:** AWS VPC, Security Groups, Network ACLs, Route Tables, Traffic Control
+
 ---
 
 ## Goals
