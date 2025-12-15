@@ -35,6 +35,11 @@ Advanced VPC networking concepts including security groups, Network ACLs, and tr
 
 **Technologies:** AWS VPC, Security Groups, Network ACLs, Route Tables, Traffic Control
 
+### 5. [VPC Private Subnets](./vpc-private-subnet/)
+Implementing network isolation through private subnets. Created private subnet with dedicated route table (no internet gateway route) and Network ACL for hosting databases and application servers securely.
+
+**Technologies:** AWS VPC, Private Subnets, Route Tables, Network ACLs, CIDR, Network Isolation
+
 ---
 
 ## Goals
