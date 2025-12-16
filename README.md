@@ -40,6 +40,11 @@ Implementing network isolation through private subnets. Created private subnet w
 
 **Technologies:** AWS VPC, Private Subnets, Route Tables, Network ACLs, CIDR, Network Isolation
 
+### 6. [Launching VPC Resources](./vpc-launching-resources/)
+Deploying actual resources in VPC infrastructure. Launched public and private EC2 instances, configured security groups, and explored the 'VPC and More' option for visualizing network architecture.
+
+**Technologies:** AWS VPC, EC2, Security Groups, Public/Private Subnets, VPC Resource Map
+
 ---
 
 ## Goals
