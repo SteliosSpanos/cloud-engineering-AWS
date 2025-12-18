@@ -45,6 +45,11 @@ Deploying actual resources in VPC infrastructure. Launched public and private EC
 
 **Technologies:** AWS VPC, EC2, Security Groups, Public/Private Subnets, VPC Resource Map
 
+### 7. [Testing VPC Connectivity](./vpc-testing-connectivity/)
+Validating network architecture through practical testing. Used EC2 Instance Connect, SSH, ping (ICMP), and curl to test connectivity between public and private instances and verify security group and NACL configurations.
+
+**Technologies:** AWS EC2, EC2 Instance Connect, SSH, ICMP/Ping, Curl, Security Groups, Network Testing
+
 ---
 
 ## Goals
