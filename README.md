@@ -50,6 +50,11 @@ Validating network architecture through practical testing. Used EC2 Instance Con
 
 **Technologies:** AWS EC2, EC2 Instance Connect, SSH, ICMP/Ping, Curl, Security Groups, Network Testing
 
+### 8. [VPC Peering](./vpc-peering/)
+Connecting isolated VPCs through peering connections. Created two VPCs with public subnets, launched EC2 instances, configured VPC peering, and updated route tables to enable private cross-VPC communication.
+
+**Technologies:** AWS VPC, VPC Peering, Route Tables, Security Groups, EC2, Cross-VPC Networking
+
 ---
 
 ## Goals
