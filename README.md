@@ -55,6 +55,11 @@ Connecting isolated VPCs through peering connections. Created two VPCs with publ
 
 **Technologies:** AWS VPC, VPC Peering, Route Tables, Security Groups, EC2, Cross-VPC Networking
 
+### 9. [VPC Monitoring with Flow Logs](./vpc-monitoring/)
+Implementing network monitoring and visibility. Set up VPC Flow Logs to capture network traffic metadata, configured CloudWatch log groups, created IAM roles with trust policies, and used CloudWatch Logs Insights to analyze traffic patterns.
+
+**Technologies:** AWS VPC Flow Logs, CloudWatch, CloudWatch Logs Insights, IAM Roles, Trust Policies, Network Monitoring
+
 ---
 
 ## Goals
