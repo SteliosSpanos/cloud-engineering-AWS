@@ -1,0 +1,5 @@
+# Example Terraform variables file
+# Copy this file to terraform.tfvars and customize the values
+
+# Operating system for SSH configuration (linux or windows)
+host_os = "linux"

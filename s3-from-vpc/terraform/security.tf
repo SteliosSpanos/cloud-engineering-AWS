@@ -116,5 +116,3 @@ resource "aws_network_acl_association" "test-nacl-assoc" {
   subnet_id      = aws_subnet.test-subnet.id
   network_acl_id = aws_network_acl.test-nacl.id
 }
-
-
