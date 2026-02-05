@@ -29,6 +29,11 @@ resource "aws_iam_role_policy_attachment" "nat_instance_cloudwatch" {
   policy_arn = aws_iam_policy.cloudwatch_logs.arn
 }
 
+resource "aws_iam_role_policy_attachment" "nat_instance_ssm" {
+  role       = aws_iam_role.nat_instance.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_instance_profile" "nat_instance" {
   name = "${var.project_name}-nat-instance-profile"
   role = aws_iam_role.nat_instance.name

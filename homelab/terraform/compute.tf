@@ -35,10 +35,6 @@ resource "aws_instance" "nat_instance" {
   tags = {
     Name = "${var.project_name}-nat-instance"
   }
-
-  lifecycle {
-    ignore_changes = [user_data]
-  }
 }
 
 resource "aws_eip" "nat_instance" {
@@ -87,4 +83,36 @@ resource "aws_instance" "main_vm" {
   tags = {
     Name = "${var.project_name}-main-vm"
   }
+}
+
+resource "local_file" "ssh_config" {
+  content = <<-EOF
+    # Usage: ssh -F .ssh/config jump-box
+
+    Host jump-box
+        HostName ${aws_eip.jump_box.public_ip}
+        User ec2-user
+        IdentityFile ${abspath("${path.module}/.ssh/${var.project_name}-key.pem")}
+        StrictHostKeyChecking no
+        UserKnownHostsFile /dev/null
+
+    Host nat-instance
+        HostName ${aws_instance.nat_instance.private_ip}
+        User ec2-user
+        IdentityFile ${abspath("${path.module}/.ssh/${var.project_name}-key.pem")}
+        ProxyJump jump-box
+        StrictHostKeyChecking no
+        UserKnownHostsFile /dev/null
+
+    Host main-vm
+        HostName ${aws_instance.main_vm.private_ip}
+        User ec2-user
+        IdentityFile ${abspath("${path.module}/.ssh/${var.project_name}-key.pem")}
+        ProxyJump jump-box
+        StrictHostKeyChecking no
+        UserKnownHostsFile /dev/null
+  EOF
+
+  filename        = "${path.module}/.ssh/config"
+  file_permission = "0600"
 }
