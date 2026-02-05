@@ -2,8 +2,6 @@
 
 ## Overview
 
-Infrastructure as Code (IaC) represents a fundamental shift in how cloud infrastructure is managed, moving from manual console clicking to declarative configuration files that can be versioned, reviewed, and reproducibly deployed. Terraform, HashiCorp's open-source IaC tool, enables you to define AWS resources in human-readable configuration files and manage their entire lifecycle through code. This approach brings software engineering practices like version control, code review, and automated testing to infrastructure management.
-
 I built this homelab project to synthesize everything I learned from my previous VPC projects into a complete, production-ready infrastructure managed entirely through Terraform. Rather than manually creating resources through the AWS Console, I defined a three-tier architecture in code that includes networking, compute, security, storage, and identity management. This project represents the natural evolution from learning individual AWS services to architecting complete systems with industry-standard tooling.
 
 The homelab creates a secure, cost-optimized AWS environment suitable for hosting private workloads, development environments, or experimental projects. The architecture implements the bastion host pattern for secure access, uses a NAT instance instead of AWS's managed NAT Gateway for cost savings, enforces defense-in-depth security with multiple layers of access controls, and provides private S3 access through VPC endpoints. All infrastructure is defined in modular Terraform files, making it easy to modify, extend, or tear down.
