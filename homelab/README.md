@@ -12,7 +12,7 @@ The technologies involved include Terraform for infrastructure as code, VPC netw
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                                    INTERNET                                      │
+│                                    INTERNET                                     │
 └─────────────────────────────────────┬───────────────────────────────────────────┘
                                       │
                                       │ SSH (Port 22) - Only from My IP
