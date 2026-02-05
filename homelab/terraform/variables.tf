@@ -32,11 +32,6 @@ variable "private_subnet_cidr" {
   description = "Private subnet CIDR"
 }
 
-variable "ssh_key_name" {
-  type        = string
-  description = "Name of EC2 key pair for SSH access"
-}
-
 variable "instance_types" {
   type = object({
     jump_box = string

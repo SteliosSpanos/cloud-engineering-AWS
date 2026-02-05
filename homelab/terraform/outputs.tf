@@ -49,9 +49,10 @@ output "s3_bucket_arn" {
 }
 
 output "ssh_commands" {
-  description = "SSH connection commands"
+  description = "SSH connection commands (use the config file - no ssh-add needed!)"
   value = {
-    jump_box = "ssh -A -i ${path.module}/.ssh/${var.project_name}-key.pem ec2-user@${aws_eip.jump_box.public_ip}"
-    main_vm  = "From jump box: ssh ec2-user@${aws_instance.main_vm.private_ip}"
+    jump_box     = "ssh -F .ssh/config jump-box"
+    nat_instance = "ssh -F .ssh/config nat-instance"
+    main_vm      = "ssh -F .ssh/config main-vm"
   }
 }
