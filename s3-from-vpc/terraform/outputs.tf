@@ -1,8 +1,3 @@
-output "my_ip" {
-  description = "My public IP"
-  value       = data.external.my_ip.result.ip
-}
-
 output "vpc_id" {
   description = "VPC ID"
   value       = aws_vpc.test-vpc.id
