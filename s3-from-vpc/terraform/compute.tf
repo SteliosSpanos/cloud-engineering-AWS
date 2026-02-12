@@ -1,32 +1,43 @@
 
-resource "aws_key_pair" "test-auth" {
-  key_name   = "dev-key"
-  public_key = file("~/.ssh/dev-key.pub")
+resource "tls_private_key" "test-key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
 }
 
-resource "aws_instance" "dev-node" {
-  instance_type          = "t3.micro"
-  ami                    = data.aws_ami.dev-ami.id
-  key_name               = aws_key_pair.test-auth.id
-  vpc_security_group_ids = [aws_security_group.test-public-sg.id]
-  subnet_id              = aws_subnet.test-subnet.id
-  user_data              = file("${path.module}/templates/userdata.tpl")
-
-  root_block_device {
-    volume_size = 10 # 10 GB (free tier eligible)
-  }
-
-  provisioner "local-exec" {
-    command = templatefile("${path.module}/templates/${var.host_os}-ssh-config.tpl", {
-      hostname     = self.public_ip,
-      user         = "ubuntu",
-      identityfile = pathexpand("~/.ssh/dev-key")
-    })
-
-    interpreter = var.host_os == "linux" ? ["bash", "-c"] : ["Powershell", "-Command"]
-  }
+resource "aws_key_pair" "test-key" {
+  key_name   = "${var.project_name}-key"
+  public_key = tls_private_key.test-key.public_key_openssh
 
   tags = {
-    Name = "dev-node"
+    Name = "${var.project_name}-key"
+  }
+}
+
+resource "local_file" "private-key" {
+  content         = tls_private_key.test-key.private_key_pem
+  filename        = "${path.module}/.ssh/${var.project_name}-key.pem"
+  file_permission = "0400"
+}
+
+resource "aws_instance" "test-instance" {
+  instance_type          = var.instance_type
+  ami                    = data.aws_ami.amazon_linux_2023.id
+  key_name               = aws_key_pair.test-key.key_name
+  vpc_security_group_ids = [aws_security_group.test-public-sg.id]
+  subnet_id              = aws_subnet.test-subnet.id
+
+  tags = {
+    Name = "${var.project_name}-instance"
+  }
+}
+
+resource "aws_eip" "test-instance" {
+  domain   = "vpc"
+  instance = aws_instance.test-instance.id
+
+  depends_on = [aws_internet_gateway.test-igw]
+
+  tags = {
+    Name = "${var.project_name}-instance-eip"
   }
 }

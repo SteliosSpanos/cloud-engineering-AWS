@@ -6,12 +6,24 @@ data "external" "my_ip" {
   program = ["bash", "${path.module}/scripts/my_ip_json.sh"]
 }
 
-data "aws_ami" "dev-ami" {
+data "aws_ami" "amazon_linux_2023" {
   most_recent = true
-  owners      = ["099720109477"]
+  owners      = ["amazon"]
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+    values = ["al2023-ami-2023*-kernel-*-x86_64"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
   }
 }
+
+data "aws_caller_identity" "current" {}

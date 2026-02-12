@@ -1,5 +1,5 @@
 resource "aws_security_group" "test-public-sg" {
-  name        = "dev-sg"
+  name        = "${var.project_name}-sg"
   description = "Security group for dev environment"
   vpc_id      = aws_vpc.test-vpc.id
 
@@ -44,75 +44,114 @@ resource "aws_security_group" "test-public-sg" {
   }
 
   tags = {
-    Name = "dev-sg"
+    Name = "${var.project_name}-sg"
   }
 }
 
 resource "aws_network_acl" "test-nacl" {
-  vpc_id = aws_vpc.test-vpc.id
-
-  ingress {
-    rule_no    = 100
-    protocol   = "tcp"
-    action     = "allow"
-    cidr_block = "${data.external.my_ip.result.ip}/32"
-    from_port  = 22
-    to_port    = 22
-  }
-
-  ingress {
-    rule_no    = 110
-    protocol   = "tcp"
-    action     = "allow"
-    cidr_block = "0.0.0.0/0"
-    from_port  = 80
-    to_port    = 80
-  }
-
-  ingress {
-    rule_no    = 120
-    protocol   = "tcp"
-    action     = "allow"
-    cidr_block = "0.0.0.0/0"
-    from_port  = 443
-    to_port    = 443
-  }
-
-  ingress {
-    rule_no    = 130
-    protocol   = "tcp"
-    action     = "allow"
-    cidr_block = "0.0.0.0/0"
-    from_port  = 1024
-    to_port    = 65535
-  }
-
-  ingress {
-    rule_no    = 140
-    protocol   = "icmp"
-    action     = "allow"
-    cidr_block = "0.0.0.0/0"
-    from_port  = 0
-    to_port    = 0
-    icmp_type  = -1
-    icmp_code  = -1
-  }
-
-  egress {
-    rule_no    = 100
-    protocol   = "-1"
-    action     = "allow"
-    cidr_block = "0.0.0.0/0"
-    from_port  = 0
-    to_port    = 0
-  }
+  vpc_id     = aws_vpc.test-vpc.id
+  subnet_ids = [aws_subnet.test-subnet.id]
 
   tags = {
-    Name = "dev-nacl"
+    Name = "${var.project_name}-nacl"
   }
 }
 
-resource "aws_network_acl_association" "test-nacl-assoc" {
-  subnet_id      = aws_subnet.test-subnet.id
+resource "aws_network_acl_rule" "public_inbound_ssh" {
   network_acl_id = aws_network_acl.test-nacl.id
+  rule_number    = 100
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = "${data.external.my_ip.result.ip}/32"
+  from_port      = 22
+  to_port        = 22
+}
+
+resource "aws_network_acl_rule" "public_inbound_http" {
+  network_acl_id = aws_network_acl.test-nacl.id
+  rule_number    = 110
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/0"
+  from_port      = 80
+  to_port        = 80
+}
+
+resource "aws_network_acl_rule" "public_inbound_https" {
+  network_acl_id = aws_network_acl.test-nacl.id
+  rule_number    = 120
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/0"
+  from_port      = 443
+  to_port        = 443
+}
+
+resource "aws_network_acl_rule" "public_inbound_icmp" {
+  network_acl_id = aws_network_acl.test-nacl.id
+  rule_number    = 130
+  egress         = false
+  protocol       = "icmp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/0"
+  icmp_type      = -1
+  icmp_code      = -1
+}
+
+resource "aws_network_acl_rule" "public_inbound_ephemeral" {
+  network_acl_id = aws_network_acl.test-nacl.id
+  rule_number    = 140
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/0"
+  from_port      = 1024
+  to_port        = 65535
+}
+
+resource "aws_network_acl_rule" "public_outbound_http" {
+  network_acl_id = aws_network_acl.test-nacl.id
+  rule_number    = 100
+  egress         = true
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/0"
+  from_port      = 80
+  to_port        = 80
+}
+
+resource "aws_network_acl_rule" "public_outbound_https" {
+  network_acl_id = aws_network_acl.test-nacl.id
+  rule_number    = 110
+  egress         = true
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/0"
+  from_port      = 443
+  to_port        = 443
+}
+
+resource "aws_network_acl_rule" "public_outbound_icmp" {
+  network_acl_id = aws_network_acl.test-nacl.id
+  rule_number    = 120
+  egress         = true
+  protocol       = "icmp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/0"
+  icmp_type      = -1
+  icmp_code      = -1
+}
+
+resource "aws_network_acl_rule" "public_outbound_ephemeral" {
+  network_acl_id = aws_network_acl.test-nacl.id
+  rule_number    = 130
+  egress         = true
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/0"
+  from_port      = 1024
+  to_port        = 65535
 }
