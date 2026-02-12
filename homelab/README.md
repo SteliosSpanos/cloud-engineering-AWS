@@ -2,8 +2,6 @@
 
 ## Overview
 
-I built this homelab project to synthesize everything I learned from my previous VPC projects into a complete, production-ready infrastructure managed entirely through Terraform. Rather than manually creating resources through the AWS Console, I defined a three-tier architecture in code that includes networking, compute, security, storage, and identity management. This project represents the natural evolution from learning individual AWS services to architecting complete systems with industry-standard tooling.
-
 The homelab creates a secure, cost-optimized AWS environment suitable for hosting private workloads, development environments, or experimental projects. The architecture implements the bastion host pattern for secure access, uses a NAT instance instead of AWS's managed NAT Gateway for cost savings, enforces defense-in-depth security with multiple layers of access controls, and provides private S3 access through VPC endpoints. All infrastructure is defined in modular Terraform files, making it easy to modify, extend, or tear down.
 
 The technologies involved include Terraform for infrastructure as code, VPC networking with public and private subnets, EC2 instances running Amazon Linux 2023, security groups and network ACLs for traffic control, IAM roles with least-privilege policies, S3 with encryption and versioning, VPC endpoints for AWS service access, and automated SSH configuration with ProxyJump. This project taught me that real cloud engineering isn't about knowing how to create resources, it's about architecting systems that are secure, maintainable, and cost-effective from day one.
