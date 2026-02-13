@@ -11,46 +11,37 @@ This infrastructure provisions:
 - **Route table** with default route to IGW
 - **Security Group** with restricted SSH/ICMP access
 - **Network ACL** for additional subnet-level security
-- **EC2 instance** (Ubuntu 24.04 LTS) with SSH access
+- **EC2 instance** (Amazon Linux 2023) with SSH access
+- **S3 bucket** with versioning and AES256 server-side encryption
 
 ## Project Structure
 
 ```
 terraform/
-├── versions.tf                 # Terraform and provider configuration
+├── providers.tf                # Terraform and provider configuration
 ├── variables.tf                # Input variables
 ├── data.tf                     # Data sources (AZs, AMI, external IP)
 ├── network.tf                  # VPC, subnets, IGW, route tables
 ├── security.tf                 # Security groups and NACLs
 ├── compute.tf                  # EC2 instances and key pairs
+├── s3.tf                       # S3 bucket, versioning, and encryption
 ├── outputs.tf                  # Output values
 ├── terraform.tfvars.example    # Example variable values
-├── templates/                  # Template files
-│   ├── userdata.tpl           # EC2 user data script
-│   ├── linux-ssh-config.tpl   # Linux SSH config template
-│   └── windows-ssh-config.tpl # Windows SSH config template
 └── scripts/                    # Helper scripts
-    └── my_ip_json.sh          # Script to get current public IP
+    └── my_ip_json.sh           # Script to get current public IP
 ```
 
 ## Prerequisites
 
 1. **AWS CLI** configured with credentials
    ```bash
-   aws configure --profile test-dev
+   aws configure --profile your-profile
    ```
 
 2. **Terraform** installed (version >= 1.0)
    ```bash
    terraform version
    ```
-
-3. **SSH key pair** generated
-   ```bash
-   ssh-keygen -t rsa -b 4096 -f ~/.ssh/dev-key
-   ```
-
-4. **Operating System**: Linux or Windows with PowerShell
 
 ## Configuration
 
@@ -59,17 +50,18 @@ terraform/
    cp terraform.tfvars.example terraform.tfvars
    ```
 
-2. **Edit terraform.tfvars** if needed:
+2. **Edit `terraform.tfvars`** and set the two required values:
    ```hcl
-   host_os = "linux"  # or "windows"
+   profile = "your-profile"  # Your AWS CLI profile name
+   region  = "eu-west-3"     # Your preferred AWS region
    ```
 
-3. **Update versions.tf** with your AWS profile and region if different:
+   Optional variables (defaults shown) that can be added to `terraform.tfvars`:
    ```hcl
-   provider "aws" {
-     profile = "test-dev"      # Your AWS CLI profile
-     region  = "eu-west-3"     # Your preferred region
-   }
+   project_name       = "s3-gateway"    # Used for resource naming
+   vpc_cidr           = "10.0.0.0/16"
+   public_subnet_cidr = "10.0.1.0/24"
+   instance_type      = "t3.micro"
    ```
 
 ## Usage
@@ -91,24 +83,39 @@ terraform apply
 
 ### Get Outputs
 ```bash
-terraform output dev_ip
+terraform output instance_public_ip
+terraform output ssh_key_path
+terraform output s3_bucket_name
 ```
 
 ### SSH into Instance
-After apply, SSH is automatically configured. Connect with:
-```bash
-ssh ubuntu@<dev_ip>
-```
 
-Or if SSH config was generated:
+Terraform generates the SSH key pair automatically. After `apply` completes, retrieve the private key path from the output and connect:
+
 ```bash
-ssh dev-node
+ssh -i $(terraform output -raw ssh_key_path) ec2-user@$(terraform output -raw instance_public_ip)
 ```
 
 ### Destroy Infrastructure
 ```bash
 terraform destroy
 ```
+
+## Outputs
+
+| Output | Description |
+|---|---|
+| `vpc_id` | ID of the created VPC |
+| `public_subnet_id` | ID of the public subnet |
+| `instance_public_ip` | Elastic IP address of the EC2 instance |
+| `s3_bucket_name` | Name of the created S3 bucket |
+| `ssh_key_path` | Local path to the generated private key file |
+
+## S3 Resources
+
+The S3 bucket is named `<project_name>-storage-<account_id>` and is configured with:
+- **Versioning**: Enabled to protect against accidental deletion or overwrites
+- **Encryption**: AES256 server-side encryption applied to all objects at rest
 
 ## Security Features
 
@@ -130,6 +137,9 @@ terraform destroy
 ### Dynamic IP Detection
 The configuration automatically detects your current public IP using the `scripts/my_ip_json.sh` script and restricts SSH/ICMP access accordingly.
 
+### SSH Key Management
+Terraform generates the RSA key pair via the `tls_private_key` resource. The private key is saved to `terraform/.ssh/<project_name>-key.pem` automatically — no manual key generation is required.
+
 ## Cost Considerations
 
 - **VPC**: Free
@@ -139,26 +149,28 @@ The configuration automatically detects your current public IP using the `script
 - **Security Groups/NACLs**: Free
 - **EC2 t3.micro**: ~$0.0104/hour (Free tier eligible: 750 hours/month for 12 months)
 - **EBS Volume (10 GB gp2)**: ~$1.00/month (Free tier eligible: 30 GB/month for 12 months)
+- **S3 bucket**: Free tier includes 5 GB storage, 20,000 GET requests, and 2,000 PUT requests per month for 12 months
 
 **Estimated monthly cost**: ~$0-8 (depending on free tier eligibility)
 
 ## Important Notes
 
-1. **SSH Key**: Ensure `~/.ssh/dev-key.pub` exists before running `terraform apply`
-2. **IP Changes**: If your public IP changes, run `terraform apply` again to update security rules
-3. **State Files**: Never commit `terraform.tfstate` or `terraform.tfvars` to version control
-4. **Region**: Default region is `eu-west-3` (Paris). Change in `versions.tf` if needed
-5. **Cleanup**: Always run `terraform destroy` when done to avoid unnecessary charges
+1. **SSH Key**: Terraform generates the key pair automatically. Do not generate or provide your own key.
+2. **IP Changes**: If your public IP changes, run `terraform apply` again to update security rules.
+3. **State Files**: Never commit `terraform.tfstate` or `terraform.tfvars` to version control.
+4. **Region**: Default region is `eu-west-3` (Paris). Change via `terraform.tfvars` if needed.
+5. **Cleanup**: Always run `terraform destroy` when done to avoid unnecessary charges.
 
 ## Troubleshooting
 
 ### SSH Connection Issues
-- Verify your public key exists: `ls -la ~/.ssh/dev-key.pub`
+- Confirm the private key path: `terraform output ssh_key_path`
+- Ensure the key file has correct permissions: `chmod 400 <key_path>`
 - Check security group rules: `terraform state show aws_security_group.test-public-sg`
 - Verify your current IP matches the allowed CIDR: `curl ifconfig.me`
 
 ### Terraform Init Fails
-- Check AWS credentials: `aws sts get-caller-identity --profile test-dev`
+- Check AWS credentials: `aws sts get-caller-identity --profile your-profile`
 - Verify internet connectivity for provider downloads
 
 ### Instance Launch Fails
@@ -169,7 +181,7 @@ The configuration automatically detects your current public IP using the `script
 ## Customization
 
 ### Change Instance Type
-Edit `compute.tf`:
+Edit `variables.tf` or add to `terraform.tfvars`:
 ```hcl
 instance_type = "t3.small"  # or t3.medium, etc.
 ```
@@ -191,7 +203,7 @@ Edit `data.tf` to change the filter:
 ```hcl
 filter {
   name   = "name"
-  values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-jammy-22.04-amd64-server-*"]
+  values = ["al2023-ami-*-x86_64"]
 }
 ```
 

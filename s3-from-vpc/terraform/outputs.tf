@@ -12,3 +12,13 @@ output "instance_public_ip" {
   description = "Instance public IP (Elastic IP)"
   value       = aws_eip.test-instance.public_ip
 }
+
+output "s3_bucket_name" {
+  description = "S3 bucket name"
+  value       = aws_s3_bucket.test-bucket.id
+}
+
+output "ssh_key_path" {
+  description = "Path to the generated private key file"
+  value       = local_file.private-key.filename
+}
