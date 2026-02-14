@@ -60,6 +60,11 @@ Implementing network monitoring and visibility. Set up VPC Flow Logs to capture 
 
 **Technologies:** AWS VPC Flow Logs, CloudWatch, CloudWatch Logs Insights, IAM Roles, Trust Policies, Network Monitoring
 
+### 10. [S3 Access from VPC](./s3-from-vpc/)
+First project using Terraform (IaC) instead of the AWS Console. Provisioned a full VPC environment with EC2, dynamic IP-restricted security rules, and an S3 bucket with versioning and encryption. SSH'd into the instance and accessed S3 using AWS CLI commands.
+
+**Technologies:** Terraform, AWS VPC, EC2, S3, Security Groups, Network ACLs, Amazon Linux 2023, AWS CLI, IAM
+
 ---
 
 ## Goals
