@@ -43,3 +43,28 @@ resource "aws_vpc_endpoint" "s3" {
     Name = "${var.project_name}-s3-endpoint"
   }
 }
+
+resource "aws_s3_bucket_policy" "test-bucket" {
+  bucket = aws_s3_bucket.test-bucket.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid = "DenyIfNotFromVPCEndpoint"
+        Effect = "Deny"
+        Principal = "*"
+        Action = "s3:*"
+        Resource = [
+          aws_s3_bucket.test-bucket.arn,
+          "${aws_s3_bucket.test-bucket.arn}/*"
+        ]
+        Condition = {
+          StringNotEquals = {
+            "aws:sourceVpce" = aws_vpc_endpoint.s3.id
+          }
+        }
+      }
+    ]
+  })
+}
