@@ -46,22 +46,26 @@ resource "aws_vpc_endpoint" "s3" {
 
 resource "aws_s3_bucket_policy" "test-bucket" {
   bucket = aws_s3_bucket.test-bucket.id
+  depends_on = [aws_s3_bucket_public_access_block.test-bucket]
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid = "DenyIfNotFromVPCEndpoint"
-        Effect = "Deny"
+        Sid       = "DenyIfNotFromVPCEndpoint"
+        Effect    = "Deny"
         Principal = "*"
-        Action = "s3:*"
+        Action    = "s3:*"
         Resource = [
           aws_s3_bucket.test-bucket.arn,
           "${aws_s3_bucket.test-bucket.arn}/*"
         ]
         Condition = {
-          StringNotEquals = {
+          StringNotEqualsIfExists = {
             "aws:sourceVpce" = aws_vpc_endpoint.s3.id
+          }
+          ArnNotLike = {
+            "aws:PrincipalArn" = data.aws_caller_identity.current.arn
           }
         }
       }
