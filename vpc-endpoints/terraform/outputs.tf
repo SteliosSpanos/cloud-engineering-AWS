@@ -25,5 +25,5 @@ output "ssh_key_path" {
 
 output "ssh_command" {
   description = "SSH command to access instance"
-  value = "ssh -i ${local_file.private-key.filename} ec2-user@${aws_eip.test-instance.public_ip}"
+  value       = "ssh -i ${local_file.private-key.filename} ec2-user@${aws_eip.test-instance.public_ip}"
 }
