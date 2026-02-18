@@ -53,12 +53,12 @@ resource "aws_route_table" "homelab_private_rt" {
   }
 }
 
-resource "aws_route_table_association" "homelab-public-assoc" {
+resource "aws_route_table_association" "homelab_public_assoc" {
   subnet_id      = aws_subnet.homelab_public_subnet.id
   route_table_id = aws_route_table.homelab_public_rt.id
 }
 
-resource "aws_route_table_association" "homelab-private-assoc" {
+resource "aws_route_table_association" "homelab_private_assoc" {
   subnet_id      = aws_subnet.homelab_private_subnet.id
   route_table_id = aws_route_table.homelab_private_rt.id
 }
