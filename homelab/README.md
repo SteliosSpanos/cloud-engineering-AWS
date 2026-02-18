@@ -22,34 +22,34 @@ The technologies involved include Terraform for infrastructure as code, VPC netw
 │  ┌────────────────────────────────────────────────────────────────────────────────┐  │
 │  │                         PUBLIC SUBNET (10.0.1.0/24)                            │  │
 │  │                                                                                │  │
-│  │  ┌──────────────────┐   ┌──────────────────┐   ┌──────────────────────────┐   │  │
-│  │  │    JUMP BOX      │   │   NAT INSTANCE   │   │        WEB APP           │   │  │
-│  │  │   (t3.micro)     │   │   (t3.micro)     │   │       (t3.micro)         │   │  │
-│  │  │                  │   │                  │   │                          │   │  │
-│  │  │ ┌──────────────┐ │   │ ┌──────────────┐ │   │ ┌──────────────────────┐ │   │  │
-│  │  │ │Security Group│ │   │ │Security Group│ │   │ │    Security Group     │ │   │  │
-│  │  │ │- SSH from IP │ │   │ │- HTTP/S from │ │   │ │ - SSH from jump box  │ │   │  │
-│  │  │ └──────────────┘ │   │ │  private sub │ │   │ │ - HTTP/HTTPS 0.0.0.0 │ │   │  │
-│  │  │                  │   │ │- SSH from JB │ │   │ │ - ICMP from jump box │ │   │  │
-│  │  │ Elastic IP ──────┼──►│ └──────────────┘ │   │ └──────────────────────┘ │   │  │
-│  │  │                  │   │                  │   │                          │   │  │
-│  │  │ IAM Role:        │   │ Elastic IP ──────┼──►│ Elastic IP ─────────────┼──►│   │
-│  │  │ - CloudWatch     │   │                  │   │                          │   │  │
-│  │  │ - SSM Access     │   │ IAM Role:        │   │ IAM Role:                │   │  │
-│  │  └──────────────────┘   │ - CloudWatch     │   │ - CloudWatch             │   │  │
-│  │           │             │ - SSM Access     │   │ - SSM Access             │   │  │
-│  │           │ SSH         │                  │   └────────────┬─────────────┘   │  │
-│  │           │ ProxyJump   │ IP Forwarding +  │                │                 │  │
-│  │           │             │ iptables         │                │ Port 5432       │  │
-│  │           │             │ MASQUERADE       │                │                 │  │
-│  │           │             └────────┬─────────┘                │                 │  │
-│  │           │                      │                          │                 │  │
-│  └───────────┼──────────────────────┼──────────────────────────┼─────────────────┘  │
-│              │                      │ Outbound via NAT         │                    │
-│              │       ┌──────────────┘                          │                    │
-│              │       ▼                                         ▼                    │
+│  │  ┌──────────────────┐   ┌──────────────────┐   ┌──────────────────────────┐    │  │
+│  │  │    JUMP BOX      │   │   NAT INSTANCE   │   │        WEB APP           │    │  │
+│  │  │   (t3.micro)     │   │   (t3.micro)     │   │       (t3.micro)         │    │  │
+│  │  │                  │   │                  │   │                          │    │  │
+│  │  │ ┌──────────────┐ │   │ ┌──────────────┐ │   │ ┌──────────────────────┐ │    │  │
+│  │  │ │Security Group│ │   │ │Security Group│ │   │ │    Security Group    │ │    │  │
+│  │  │ │- SSH from IP │ │   │ │- HTTP/S from │ │   │ │ - SSH from jump box  │ │    │  │
+│  │  │ └──────────────┘ │   │ │  private sub │ │   │ │ - HTTP/HTTPS 0.0.0.0 │ │    │  │
+│  │  │                  │   │ │- SSH from JB │ │   │ │ - ICMP from jump box │ │    │  │
+│  │  │ Elastic IP ──────┼──►│ └──────────────┘ │   │ └──────────────────────┘ │    │  │
+│  │  │                  │   │                  │   │                          │    │  │
+│  │  │ IAM Role:        │   │ Elastic IP ──────┼──►│ Elastic IP ─────────────┼──►  │  │
+│  │  │ - CloudWatch     │   │                  │   │                          │    │  │
+│  │  │ - SSM Access     │   │ IAM Role:        │   │ IAM Role:                │    │  │
+│  │  └──────────────────┘   │ - CloudWatch     │   │ - CloudWatch             │    │  │
+│  │           │             │ - SSM Access     │   │ - SSM Access             │    │  │
+│  │           │ SSH         │                  │   └────────────┬─────────────┘    │  │
+│  │           │ ProxyJump   │ IP Forwarding +  │                │                  │  │
+│  │           │             │ iptables         │                │ Port 5432        │  │
+│  │           │             │ MASQUERADE       │                │                  │  │
+│  │           │             └────────┬─────────┘                │                  │  │
+│  │           │                      │                          │                  │  │
+│  └───────────┼──────────────────────┼──────────────────────────┼───────────────── ┘  │
+│              │                      │ Outbound via NAT         │                     │
+│              │       ┌──────────────┘                          │                     │
+│              │       ▼                                         ▼                     │
 │  ┌───────────┼────────────────────────────────────────────────────────────────────┐  │
-│  │           │       PRIVATE SUBNET 1 (10.0.2.0/24) - AZ 1                       │  │
+│  │           │       PRIVATE SUBNET 1 (10.0.2.0/24) - AZ 1                        │  │
 │  │           │                                                                    │  │
 │  │           ▼                                ┌─────────────────────┐             │  │
 │  │  ┌──────────────────────┐                  │    S3 BUCKET        │             │  │
@@ -73,17 +73,17 @@ The technologies involved include Terraform for infrastructure as code, VPC netw
 │  └──────────────────────────────────────────────│  │  - Port 5432 from        ││  │  │
 │                                                 │  │    web app SG only       ││  │  │
 │  ┌──────────────────────────────────────────────│  └──────────────────────────┘│  │  │
-│  │  PRIVATE SUBNET 2 (10.0.3.0/24) - AZ 2      │                              │  │  │
+│  │  PRIVATE SUBNET 2 (10.0.3.0/24) - AZ 2      │                               │  │  │
 │  │  (RDS DB Subnet Group - no instances)        │  Storage encryption enabled  │  │  │
-│  └──────────────────────────────────────────────│  DB Subnet Group: both AZs  │  │  │
+│  └──────────────────────────────────────────────│  DB Subnet Group: both AZs   │  │  │
 │                                                 └──────────────────────────────┘  │  │
-│                                                                                    │  │
-│  ┌──────────────────────────────────────────────────────────────────────────────┐  │  │
-│  │                            SECURITY LAYERS                                   │  │  │
-│  │  Layer 1: Security Groups (Stateful, Instance-level)                         │  │  │
-│  │  Layer 2: Network ACLs (Stateless, Subnet-level)                             │  │  │
-│  │  Layer 3: IAM Roles (API-level access control)                               │  │  │
-│  └──────────────────────────────────────────────────────────────────────────────┘  │  │
+│                                                                                   │  │
+│  ┌──────────────────────────────────────────────────────────────────────────────┐ │  │
+│  │                            SECURITY LAYERS                                   │ │  │
+│  │  Layer 1: Security Groups (Stateful, Instance-level)                         │ │  │
+│  │  Layer 2: Network ACLs (Stateless, Subnet-level)                             │ │  │
+│  │  Layer 3: IAM Roles (API-level access control)                               │ │  │
+│  └──────────────────────────────────────────────────────────────────────────────┘ │  │
 └──────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
