@@ -67,17 +67,17 @@ resource "aws_iam_instance_profile" "main_vm" {
 
 
 resource "aws_iam_role" "web_app" {
-  name = "${var.project_name}-web-app-role"
+  name               = "${var.project_name}-web-app-role"
   assume_role_policy = data.aws_iam_policy_document.ec2_assume_role.json
 }
 
 resource "aws_iam_role_policy_attachment" "web_app_cloudwatch" {
-  role = aws_iam_role.web_app.name
+  role       = aws_iam_role.web_app.name
   policy_arn = aws_iam_policy.cloudwatch_logs.arn
 }
 
 resource "aws_iam_role_policy_attachment" "web_app_ssm" {
-  role = aws_iam_role.web_app.name
+  role       = aws_iam_role.web_app.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 

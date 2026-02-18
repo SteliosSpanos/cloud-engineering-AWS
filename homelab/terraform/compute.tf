@@ -94,10 +94,10 @@ resource "aws_instance" "web_app" {
   key_name               = aws_key_pair.homelab_key.key_name
 
   user_data = templatefile("${path.module}/templates/userdata-db.tpl", {
-    db_address = aws_db_instance.postgres.address
+    db_address  = aws_db_instance.postgres.address
     db_username = var.db_username
     db_password = var.db_password
-    db_name = var.db_name
+    db_name     = var.db_name
   })
 
   tags = {
@@ -106,7 +106,7 @@ resource "aws_instance" "web_app" {
 }
 
 resource "aws_eip" "web_app" {
-  domain = "vpc"
+  domain   = "vpc"
   instance = aws_instance.web_app.id
 
   depends_on = [aws_internet_gateway.homelab_igw]
