@@ -38,6 +38,11 @@ output "jump_box_private_ip" {
   value       = aws_instance.jump_box.private_ip
 }
 
+output "web_app_public_ip" {
+  description = "Web app public IP (Elastic IP)"
+  value       = aws_eip.web_app.public_ip
+}
+
 output "s3_bucket_name" {
   description = "S3 bucket name"
   value       = aws_s3_bucket.homelab.id
@@ -48,11 +53,17 @@ output "s3_bucket_arn" {
   value       = aws_s3_bucket.homelab.arn
 }
 
+output "db_endpoint" {
+  description = "RDS PostgreSQL endpoint"
+  value       = aws_db_instance.postgres.endpoint
+}
+
 output "ssh_commands" {
   description = "SSH connection commands (use the config file - no ssh-add needed!)"
   value = {
     jump_box     = "ssh -F .ssh/config jump-box"
     nat_instance = "ssh -F .ssh/config nat-instance"
     main_vm      = "ssh -F .ssh/config main-vm"
+    web_app      = "ssh -F .ssh/config web-app"
   }
 }
