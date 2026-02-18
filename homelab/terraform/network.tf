@@ -29,6 +29,16 @@ resource "aws_subnet" "homelab_private_subnet" {
   }
 }
 
+resource "aws_subnet" "homelab_private_subnet_2" {
+  vpc_id            = aws_vpc.homelab_vpc.id
+  cidr_block        = var.private_subnet_2_cidr
+  availability_zone = data.aws_availability_zones.available.names[1]
+
+  tags = {
+    Name = "${var.project_name}-private-subnet-2"
+  }
+}
+
 resource "aws_internet_gateway" "homelab_igw" {
   vpc_id = aws_vpc.homelab_vpc.id
 
@@ -60,6 +70,11 @@ resource "aws_route_table_association" "homelab_public_assoc" {
 
 resource "aws_route_table_association" "homelab_private_assoc" {
   subnet_id      = aws_subnet.homelab_private_subnet.id
+  route_table_id = aws_route_table.homelab_private_rt.id
+}
+
+resource "aws_route_table_association" "homelab_private_assoc_2" {
+  subnet_id      = aws_subnet.homelab_private_subnet_2.id
   route_table_id = aws_route_table.homelab_private_rt.id
 }
 

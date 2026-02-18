@@ -131,8 +131,11 @@ resource "aws_network_acl_rule" "public_outbound_icmp" {
 
 
 resource "aws_network_acl" "private" {
-  vpc_id     = aws_vpc.homelab_vpc.id
-  subnet_ids = [aws_subnet.homelab_private_subnet.id]
+  vpc_id = aws_vpc.homelab_vpc.id
+  subnet_ids = [
+    aws_subnet.homelab_private_subnet.id,
+    aws_subnet.homelab_private_subnet_2.id
+  ]
 
   tags = {
     Name = "${var.project_name}-private-nacl"

@@ -32,6 +32,12 @@ variable "private_subnet_cidr" {
   description = "Private subnet CIDR"
 }
 
+variable "private_subnet_2_cidr" {
+  type        = string
+  default     = "10.0.3.0/24"
+  description = "Second private subnet CIDR (second AZ, required for RDS subnet group)"
+}
+
 variable "instance_types" {
   type = object({
     jump_box = string

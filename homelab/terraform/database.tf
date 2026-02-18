@@ -1,6 +1,9 @@
 resource "aws_db_subnet_group" "postgres" {
-  name       = "${var.project_name}-db-subnet-group"
-  subnet_ids = [aws_subnet.homelab_private_subnet.id]
+  name = "${var.project_name}-db-subnet-group"
+  subnet_ids = [
+    aws_subnet.homelab_private_subnet.id,
+    aws_subnet.homelab_private_subnet_2.id
+  ]
 }
 
 resource "aws_db_parameter_group" "postgres" {
