@@ -85,6 +85,37 @@ resource "aws_instance" "main_vm" {
   }
 }
 
+resource "aws_instance" "web_app" {
+  ami                    = data.aws_ami.amazon_linux_2023.id
+  instance_type          = var.instance_types.web_app
+  subnet_id              = aws_subnet.homelab_public_subnet.id
+  vpc_security_group_ids = [aws_security_group.web_app.id]
+  iam_instance_profile   = aws_iam_instance_profile.web_app.name
+  key_name               = aws_key_pair.homelab_key.key_name
+
+  user_data = templatefile("${path.module}/templates/userdata-db.tpl", {
+    db_address = aws_db_instance.postgres.address
+    db_username = var.db_username
+    db_password = var.db_password
+    db_name = var.db_name
+  })
+
+  tags = {
+    Name = "${var.project_name}-web-app"
+  }
+}
+
+resource "aws_eip" "web_app" {
+  domain = "vpc"
+  instance = aws_instance.web_app.id
+
+  depends_on = [aws_internet_gateway.homelab_igw]
+
+  tags = {
+    Name = "${var.project_name}-web-app-eip"
+  }
+}
+
 resource "local_file" "ssh_config" {
   content = <<-EOF
     # Usage: ssh -F .ssh/config jump-box
@@ -106,6 +137,14 @@ resource "local_file" "ssh_config" {
 
     Host main-vm
         HostName ${aws_instance.main_vm.private_ip}
+        User ec2-user
+        IdentityFile ${abspath("${path.module}/.ssh/${var.project_name}-key.pem")}
+        ProxyJump jump-box
+        StrictHostKeyChecking no
+        UserKnownHostsFile /dev/null
+
+    Host web-app
+        HostName ${aws_instance.web_app.private_ip}
         User ec2-user
         IdentityFile ${abspath("${path.module}/.ssh/${var.project_name}-key.pem")}
         ProxyJump jump-box
