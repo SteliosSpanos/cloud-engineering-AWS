@@ -48,42 +48,42 @@ The technologies involved include Terraform for infrastructure as code, VPC netw
 │              │                      │ Outbound via NAT         │                     │
 │              │       ┌──────────────┘                          │                     │
 │              │       ▼                                         ▼                     │
-│  ┌───────────┼────────────────────────────────────────────────────────────────────┐  │
-│  │           │       PRIVATE SUBNET 1 (10.0.2.0/24) - AZ 1                        │  │
-│  │           │                                                                    │  │
-│  │           ▼                                ┌─────────────────────┐             │  │
-│  │  ┌──────────────────────┐                  │    S3 BUCKET        │             │  │
-│  │  │       MAIN VM        │  VPC Endpoint    │                     │             │  │
-│  │  │      (t3.micro)      │◄────────────────►│  - Versioning       │             │  │
-│  │  │                      │   (Gateway)      │  - AES256 Encrypted │             │  │
-│  │  │ ┌──────────────────┐ │                  │  - Public Access    │             │  │
-│  │  │ │  Security Group  │ │                  │    Blocked          │             │  │
-│  │  │ │ - SSH from JB    │ │                  │  - Bucket Policy:   │             │  │
-│  │  │ │ - ICMP from JB   │ │                  │    Main VM Role Only│             │  │
-│  │  │ └──────────────────┘ │                  └─────────────────────┘             │  │
-│  │  │  NO Public IP        │                                                      │  │
-│  │  │  IAM Role:           │                                                      │  │
-│  │  │  - CloudWatch        │                                                      │  │
-│  │  │  - SSM Access        │                    ┌──────────────────────────────┐  │  │
-│  │  │  - S3 Access         │                    │   RDS POSTGRESQL 15          │  │  │
-│  │  └──────────────────────┘                    │   (db.t3.micro, 20 GB)       │  │  │
-│  │                                              │                              │  │  │
-│  │                                              │  ┌──────────────────────────┐│  │  │
-│  │                                              │  │     Security Group       ││  │  │
-│  └──────────────────────────────────────────────│  │  - Port 5432 from        ││  │  │
-│                                                 │  │    web app SG only       ││  │  │
-│  ┌──────────────────────────────────────────────│  └──────────────────────────┘│  │  │
-│  │  PRIVATE SUBNET 2 (10.0.3.0/24) - AZ 2      │                               │  │  │
-│  │  (RDS DB Subnet Group - no instances)        │  Storage encryption enabled  │  │  │
-│  └──────────────────────────────────────────────│  DB Subnet Group: both AZs   │  │  │
-│                                                 └──────────────────────────────┘  │  │
-│                                                                                   │  │
-│  ┌──────────────────────────────────────────────────────────────────────────────┐ │  │
-│  │                            SECURITY LAYERS                                   │ │  │
-│  │  Layer 1: Security Groups (Stateful, Instance-level)                         │ │  │
-│  │  Layer 2: Network ACLs (Stateless, Subnet-level)                             │ │  │
-│  │  Layer 3: IAM Roles (API-level access control)                               │ │  │
-│  └──────────────────────────────────────────────────────────────────────────────┘ │  │
+│  ┌───────────┼───────────────────────────────────────────────────────────────┐       │
+│  │           │       PRIVATE SUBNET 1 (10.0.2.0/24) - AZ 1                   |       │
+│  │           │                                                               |       │
+│  │           ▼                                ┌─────────────────────┐        |       │
+│  │  ┌──────────────────────┐                  │    S3 BUCKET        │        |       │
+│  │  │       MAIN VM        │  VPC Endpoint    │                     │        |       │
+│  │  │      (t3.micro)      │◄────────────────►│  - Versioning       │        |       │
+│  │  │                      │   (Gateway)      │  - AES256 Encrypted │        |       │
+│  │  │ ┌──────────────────┐ │                  │  - Public Access    │        |       │
+│  │  │ │  Security Group  │ │                  │    Blocked          │        |       │
+│  │  │ │ - SSH from JB    │ │                  │  - Bucket Policy:   │        |       │
+│  │  │ │ - ICMP from JB   │ │                  │    Main VM Role Only│        |       │
+│  │  │ └──────────────────┘ │                  └─────────────────────┘        |       │
+│  │  │  NO Public IP        │                                                 |       │
+│  │  │  IAM Role:           │                                                 |       │
+│  │  │  - CloudWatch        │                                                 |       │
+│  │  │  - SSM Access        │                    ┌──────────────────────────────┐     │
+│  │  │  - S3 Access         │                    │   RDS POSTGRESQL 15          │     │
+│  │  └──────────────────────┘                    │   (db.t3.micro, 20 GB)       │     │
+│  │                                              │                              │     │
+│  │                                              │  ┌──────────────────────────┐│     │
+│  │                                              │  │     Security Group       ││     │
+│  └──────────────────────────────────────────────│  │  - Port 5432 from        ││     │
+│                                                 │  │    web app SG only       ││     │
+│  ┌──────────────────────────────────────────────│  └──────────────────────────┘│     │
+│  │  PRIVATE SUBNET 2 (10.0.3.0/24) - AZ 2       │                              │     │
+│  │  (RDS DB Subnet Group - no instances)        │  Storage encryption enabled  │     │
+│  └──────────────────────────────────────────────│  DB Subnet Group: both AZs   │     │
+│                                                 └──────────────────────────────┘     │
+│                                                                                      │
+│  ┌──────────────────────────────────────────────────────────────────────────────┐    │
+│  │                            SECURITY LAYERS                                   │    │
+│  │  Layer 1: Security Groups (Stateful, Instance-level)                         │    │
+│  │  Layer 2: Network ACLs (Stateless, Subnet-level)                             │    │
+│  │  Layer 3: IAM Roles (API-level access control)                               │    │
+│  └──────────────────────────────────────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
