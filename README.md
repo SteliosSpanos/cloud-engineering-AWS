@@ -65,6 +65,26 @@ First project using Terraform (IaC) instead of the AWS Console. Provisioned a fu
 
 **Technologies:** Terraform, AWS VPC, EC2, S3, Security Groups, Network ACLs, Amazon Linux 2023, AWS CLI, IAM
 
+### 11. [VPC Endpoints](./vpc-endpoints/)
+Extended S3 access to use private VPC Gateway Endpoints instead of routing traffic through the internet. Modified route tables automatically, enforced S3 bucket policies restricting access to traffic originating from the designated endpoint, and explored Interface Endpoints (PrivateLink) for other AWS services.
+
+**Technologies:** Terraform, AWS VPC, VPC Gateway Endpoints, S3, Bucket Policies, PrivateLink, NACLs, Security Groups
+
+### 12. [EC2 Web App with Aurora DB](./aurora-db-ec2/)
+Three-tier web architecture using Terraform. Deployed a publicly accessible EC2 instance running Apache and PHP in a public subnet, connected to a managed RDS PostgreSQL database isolated in private subnets. Implemented security group references for database access and used Secrets Manager for credentials management.
+
+**Technologies:** Terraform, EC2, RDS PostgreSQL, Security Groups, NACLs, Elastic IP, PHP, Amazon Linux 2023, AWS Secrets Manager
+
+### 13. [Homelab](./homelab/)
+Production-like AWS homelab environment built entirely with Terraform. Features a bastion host for SSH access, a NAT instance for cost-efficient outbound routing, a web application tier backed by RDS PostgreSQL, and S3 with a VPC Gateway Endpoint for private access. Implements multi-layer security across security groups, NACLs, and IAM least-privilege roles.
+
+**Technologies:** Terraform, VPC, EC2, RDS PostgreSQL 15, Security Groups, NACLs, IAM, S3, VPC Gateway Endpoint, SSH ProxyJump
+
+### 14. [Data in DynamoDB](./dynamo-db-data/)
+Exploring AWS DynamoDB as a fully managed NoSQL database service. Covers DynamoDB data modeling, table creation, and integrating a schemaless database into cloud infrastructure as an alternative to traditional relational databases.
+
+**Technologies:** AWS DynamoDB, Terraform
+
 ---
 
 ## Goals
