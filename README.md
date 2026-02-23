@@ -85,6 +85,11 @@ Exploring AWS DynamoDB as a fully managed NoSQL database service. Covers DynamoD
 
 **Technologies:** AWS DynamoDB, Terraform
 
+### 15. [Encrypt Data with AWS KMS](./kms-encryption/)
+Demonstrating encryption enforcement in practice using customer-managed KMS keys. Provisioned DynamoDB tables encrypted with a CMK and proved that DynamoDB access permissions alone are not sufficient to read data, a user without `kms:Decrypt` is denied at the KMS layer. Also covers well-structured KMS key policies separating key administration from key usage, with all cryptographic operations audited via CloudTrail.
+
+**Technologies:** Terraform, AWS KMS, DynamoDB, IAM, CloudTrail
+
 ---
 
 ## Goals
