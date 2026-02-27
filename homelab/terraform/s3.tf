@@ -33,6 +33,19 @@ resource "aws_s3_bucket_public_access_block" "homelab" {
   restrict_public_buckets = true
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "app" {
+  bucket = aws_s3_bucket.app.id
+
+  rule {
+    id     = "cleanup-old-versions"
+    status = "Enabled"
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+  }
+}
+
 resource "aws_s3_bucket_policy" "homelab" {
   bucket = aws_s3_bucket.homelab.id
 
