@@ -69,3 +69,27 @@ resource "aws_s3_bucket_policy" "app" {
     ]
   })
 }
+
+resource "aws_s3_object" "index" {
+  bucket       = aws_s3_bucket.app.id
+  key          = "index.html"
+  source       = "${path.module}/app/index.html"
+  content_type = "text/html"
+  etag         = filemd5("${path.module}/app/index.html")
+}
+
+resource "aws_s3_object" "style" {
+  bucket       = aws_s3_bucket.app.id
+  key          = "style.css"
+  source       = "${path.module}/app/style.css"
+  content_type = "text/css"
+  etag         = filemd5("${path.module}/app/style.css")
+}
+
+resource "aws_s3_object" "script" {
+  bucket       = aws_s3_bucket.app.id
+  key          = "script.js"
+  source       = "${path.module}/app/script.js"
+  content_type = "text/js"
+  etag         = filemd5("${path.module}/app/script.js")
+}
