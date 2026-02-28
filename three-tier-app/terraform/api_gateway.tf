@@ -24,7 +24,7 @@ resource "aws_api_gateway_method" "get_users" {
   authorization = "NONE"
 }
 
-resource "api_gateway_integration" "get_users_lambda" {
+resource "aws_api_gateway_integration" "get_users_lambda" {
   rest_api_id             = aws_api_gateway_rest_api.app.id
   resource_id             = aws_api_gateway_resource.users.id
   http_method             = aws_api_gateway_method.get_users.http_method
@@ -91,7 +91,7 @@ resource "aws_api_gateway_deployment" "app" {
       aws_api_gateway_resource.users.id,
       aws_api_gateway_method.get_users.id,
       aws_api_gateway_integration.get_users_lambda.id,
-      aws_api_gateway.method.options_users.id,
+      aws_api_gateway_method.options_users.id,
       aws_api_gateway_integration.options_users.id,
     ]))
   }

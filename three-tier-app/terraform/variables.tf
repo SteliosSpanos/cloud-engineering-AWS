@@ -13,3 +13,9 @@ variable "project_name" {
   default     = "three-tier-app"
   description = "Project name for resource naming"
 }
+
+variable "table_name" {
+  type        = string
+  default     = "UserData"
+  description = "DynamoDB table name"
+}
