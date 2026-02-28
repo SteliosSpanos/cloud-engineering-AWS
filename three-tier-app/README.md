@@ -12,7 +12,7 @@ Technologies used: Terraform, AWS S3, CloudFront, API Gateway, Lambda (Go), Dyna
 
 ## Architecture
 
-![Architecture Diagram](assets/app.png)
+![Architecture Diagram](assets/app1.png)
 
 The architecture has three distinct layers:
 
