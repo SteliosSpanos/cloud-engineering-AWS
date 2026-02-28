@@ -31,6 +31,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "app" {
     id     = "cleanup-old-versions"
     status = "Enabled"
 
+    filter {}
+
     noncurrent_version_expiration {
       noncurrent_days = 30
     }
@@ -90,6 +92,6 @@ resource "aws_s3_object" "script" {
   bucket       = aws_s3_bucket.app.id
   key          = "script.js"
   source       = "${path.module}/app/script.js"
-  content_type = "text/js"
+  content_type = "application/javascript"
   etag         = filemd5("${path.module}/app/script.js")
 }

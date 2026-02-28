@@ -5,5 +5,10 @@ output "cloudfront_url" {
 
 output "cloudfront_distribution_id" {
   value       = aws_cloudfront_distribution.app.id
-  description = "CLoudFront distribution ID for chache invalidation"
+  description = "CloudFront distribution ID for chache invalidation"
+}
+
+output "s3_bucket_arn" {
+  value       = aws_s3_bucket.app.arn
+  description = "S3 bucket ARN"
 }
