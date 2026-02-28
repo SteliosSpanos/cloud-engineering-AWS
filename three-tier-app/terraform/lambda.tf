@@ -15,7 +15,7 @@ resource "aws_lambda_function" "get_user_data" {
   environment {
     variables = {
       REGION     = var.region
-      TABLE_NAME = "UserData"
+      TABLE_NAME = var.table_name
     }
   }
 }
