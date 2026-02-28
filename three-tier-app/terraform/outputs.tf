@@ -12,3 +12,8 @@ output "s3_bucket_arn" {
   value       = aws_s3_bucket.app.arn
   description = "S3 bucket ARN"
 }
+
+output "api_gateway_url" {
+  value       = "${aws_api_gateway_stage.prod.invoke_url}/users"
+  description = "API Gateway endpoint URL for /users"
+}
