@@ -9,6 +9,6 @@ resource "aws_dynamodb_table" "user_data" {
   }
 
   tags = {
-    Name = "${var.project_name}-table"
+    Name = "${var.project_name}-db"
   }
 }
