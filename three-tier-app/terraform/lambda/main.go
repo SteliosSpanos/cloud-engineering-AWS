@@ -65,7 +65,10 @@ func respond(status int, body interface{}) (events.APIGatewayProxyResponse, erro
 	return events.APIGatewayProxyResponse{
 		StatusCode: status,
 		Body:       string(jsonBody),
-		Headers:    map[string]string{"Content-Type": "application/json"},
+		Headers: map[string]string{
+			"Content-Type":                "application/json",
+			"Access-Control-Allow-Origin": "*",
+		},
 	}, nil
 }
 
