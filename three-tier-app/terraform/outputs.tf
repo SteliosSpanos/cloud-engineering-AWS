@@ -17,3 +17,8 @@ output "api_gateway_url" {
   value       = "${aws_api_gateway_stage.prod.invoke_url}/users"
   description = "API Gateway endpoint URL for /users"
 }
+
+output "table_arn" {
+  value       = aws_dynamodb_table.user_data.arn
+  description = "The ARN of the DynamoDB table"
+}
