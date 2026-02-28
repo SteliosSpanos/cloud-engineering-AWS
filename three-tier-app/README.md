@@ -2,5 +2,4 @@
 
 ## Architecture
 
-![Presentation Diagram](assets/presentation.png)
-![Logic Diagram](assets/api.png)
+![Architecture Diagram](assets/app.png)
