@@ -2,4 +2,5 @@
 
 ## Architecture
 
-![Architecture Diagram](assets/presentation.png)
+![Presentation Diagram](assets/presentation.png)
+![Logic Diagram](assets/api.png)
