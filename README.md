@@ -90,6 +90,11 @@ Demonstrating encryption enforcement in practice using customer-managed KMS keys
 
 **Technologies:** Terraform, AWS KMS, DynamoDB, IAM, CloudTrail
 
+### 16. [Three-Tier Serverless Application](./three-tier-app/)
+A serverless three-tier web application fully provisioned with Terraform. Static frontend on S3 behind CloudFront, a Go Lambda function behind API Gateway for the application layer, and DynamoDB for data persistence. Each tier only communicates with the one directly below it, with IAM scoped to least privilege throughout.
+
+**Technologies:** Terraform, AWS S3, CloudFront, API Gateway, Lambda (Go), DynamoDB, IAM, CloudWatch
+
 ---
 
 ## Goals
