@@ -75,3 +75,9 @@ variable "db_password" {
   sensitive   = true
   description = "Master password for RDS"
 }
+
+variable "log_retention_days" {
+  type        = number
+  default     = 30
+  description = "CloudWatch log retention in days"
+}
