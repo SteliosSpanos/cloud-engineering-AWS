@@ -30,6 +30,7 @@ resource "aws_instance" "nat_instance" {
 
   user_data = templatefile("${path.module}/templates/userdata.tpl", {
     private_subnet_cidr = aws_subnet.homelab_private_subnet.cidr_block
+    log_group_name      = aws_cloudwatch_log_group.nat_instance.name
   })
 
   tags = {
@@ -56,6 +57,10 @@ resource "aws_instance" "jump_box" {
   iam_instance_profile   = aws_iam_instance_profile.jump_box.name
   key_name               = aws_key_pair.homelab_key.key_name
 
+  user_data = templatefile("${path.module}/templates/userdata-jump-box.tpl", {
+    log_group_name = aws_cloudwatch_log_group.jump_box.name
+  })
+
   tags = {
     Name = "${var.project_name}-jump-box"
   }
@@ -80,6 +85,10 @@ resource "aws_instance" "main_vm" {
   iam_instance_profile   = aws_iam_instance_profile.main_vm.name
   key_name               = aws_key_pair.homelab_key.key_name
 
+  user_data = templatefile("${path.module}/templates/userdata-main-vm.tpl", {
+    log_group_name = aws_cloudwatch_log_group.main_vm.name
+  })
+
   tags = {
     Name = "${var.project_name}-main-vm"
   }
@@ -94,10 +103,11 @@ resource "aws_instance" "web_app" {
   key_name               = aws_key_pair.homelab_key.key_name
 
   user_data = templatefile("${path.module}/templates/userdata-db.tpl", {
-    db_address  = aws_db_instance.postgres.address
-    db_username = var.db_username
-    db_password = var.db_password
-    db_name     = var.db_name
+    db_address     = aws_db_instance.postgres.address
+    db_username    = var.db_username
+    db_password    = var.db_password
+    db_name        = var.db_name
+    log_group_name = aws_cloudwatch_log_group.web_app.name
   })
 
   tags = {
