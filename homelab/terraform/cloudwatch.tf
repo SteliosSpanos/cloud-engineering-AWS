@@ -1,5 +1,5 @@
 resource "aws_cloudwatch_log_group" "jump_box" {
-  name              = "/${var.project_name}/jumb-box"
+  name              = "/${var.project_name}/jump-box"
   retention_in_days = var.log_retention_days
 
   tags = {
