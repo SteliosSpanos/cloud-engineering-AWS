@@ -5,6 +5,38 @@ set -x
 echo "=== NAT Setup Started at $(date) ==="
 echo "Private subnet CIDR: ${private_subnet_cidr}"
 
+# Install and configure CloudWatch Agent
+dnf install -y amazon-cloudwatch-agent
+
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << CWEOF
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/nat-setup.log",
+            "log_group_name": "${log_group_name}",
+            "log_stream_name": "{instance_id}/nat-setup"
+          },
+          {
+            "file_path": "/var/log/messages",
+            "log_group_name": "${log_group_name}",
+            "log_stream_name": "{instance_id}/messages"
+          }
+        ]
+      }
+    }
+  }
+}
+CWEOF
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config \
+  -m ec2 \
+  -s \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+
 # Enable IP forwarding immediately
 echo 1 > /proc/sys/net/ipv4/ip_forward
 echo 0 > /proc/sys/net/ipv4/conf/all.send_redirects

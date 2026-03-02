@@ -1,8 +1,47 @@
 #!/bin/bash
+set -x
+
 dnf update -y
 dnf install -y httpd php php-pgsql php-mysqli mariadb105 postgresql15
 systemctl enable httpd
 systemctl start httpd
+
+# Install and configure CloudWatch Agent
+dnf install -y amazon-cloudwatch-agent
+
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << CWEOF
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/httpd/access_log",
+            "log_group_name": "${log_group_name}",
+            "log_stream_name": "{instance_id}/httpd-access"
+          },
+          {
+            "file_path": "/var/log/httpd/error_log",
+            "log_group_name": "${log_group_name}",
+            "log_stream_name": "{instance_id}/httpd-error"
+          },
+          {
+            "file_path": "/var/log/messages",
+            "log_group_name": "${log_group_name}",
+            "log_stream_name": "{instance_id}/messages"
+          }
+        ]
+      }
+    }
+  }
+}
+CWEOF
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config \
+  -m ec2 \
+  -s \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
 
 cat > /var/www/html/dbinfo.inc << 'EOF'
 <?php
@@ -134,7 +173,7 @@ function TableExists($tableName, $connection, $dbName) {
 
   return false;
 }
-?>                        
+?>
 EOF
 
 chown -R ec2-user:ec2-user /var/www/html
