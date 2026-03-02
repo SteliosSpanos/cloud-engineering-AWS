@@ -2,9 +2,9 @@
 
 ## Overview
 
-Secure, cost-optimized AWS environment built with Terraform. The architecture uses a bastion host for SSH access, a NAT instance instead of NAT Gateway for cost savings, defense-in-depth security, private S3 access via VPC endpoint, and a web-facing application tier backed by a managed PostgreSQL database.
+Secure, cost-optimized AWS environment built with Terraform. The architecture uses a bastion host for SSH access, a NAT instance instead of NAT Gateway for cost savings, defense-in-depth security, private S3 access via VPC endpoint, a web-facing application tier backed by a managed PostgreSQL database, and centralized log collection via CloudWatch Logs.
 
-**Stack:** Terraform · VPC (1 public + 2 private subnets) · 4 EC2 instances (Amazon Linux 2023) · RDS PostgreSQL 15 · Security Groups + NACLs · IAM least-privilege roles · S3 with encryption and versioning · VPC Gateway Endpoint · SSH ProxyJump automation
+**Stack:** Terraform · VPC (1 public + 2 private subnets) · 4 EC2 instances (Amazon Linux 2023) · RDS PostgreSQL 15 · Security Groups + NACLs · IAM least-privilege roles · S3 with encryption and versioning · VPC Gateway Endpoint · CloudWatch Logs · SSH ProxyJump automation
 
 ## Architecture
 
@@ -93,7 +93,7 @@ Secure, cost-optimized AWS environment built with Terraform. The architecture us
 
 **Database:** RDS PostgreSQL 15 in a subnet group spanning both AZs. Reachable only from the web app security group on port 5432. Storage encrypted at rest.
 
-**Security:** Three-layer defense — security groups (stateful, instance-level), NACLs (stateless, subnet-level), and IAM roles (per-instance, least-privilege). The main VM is the only instance with S3 access; all others are scoped to CloudWatch and SSM only.
+**Security:** Three-layer defense — security groups (stateful, instance-level), NACLs (stateless, subnet-level), and IAM roles (per-instance, least-privilege). The main VM is the only instance with S3 access. Each instance has a dedicated CloudWatch IAM policy scoped to its own log group ARN, rather than a shared wildcard policy.
 
 **Storage:** S3 bucket with versioning, AES256 encryption, public access blocked, and a bucket policy whitelisting only the main VM's IAM role. A VPC Gateway Endpoint routes S3 traffic privately, avoiding NAT bandwidth.
 
@@ -114,10 +114,13 @@ homelab/
     ├── database.tf        (RDS PostgreSQL instance + subnet group)
     ├── iam.tf             (IAM roles for all 4 instances)
     ├── s3.tf              (S3 bucket + VPC gateway endpoint)
+    ├── cloudwatch.tf      (CloudWatch log groups, one per instance)
     ├── data.tf            (data sources)
     ├── templates/
-    │   ├── userdata.tpl       (NAT instance init script)
-    │   └── userdata-db.tpl    (Web app init script)
+    │   ├── userdata.tpl           (NAT instance init script + CloudWatch Agent)
+    │   ├── userdata-db.tpl        (Web app init script + CloudWatch Agent)
+    │   ├── userdata-jump-box.tpl  (Jump box init script + CloudWatch Agent)
+    │   └── userdata-main-vm.tpl   (Main VM init script + CloudWatch Agent)
     └── scripts/
         └── my_ip_json.sh
 ```
@@ -155,6 +158,19 @@ The web app user data script (`userdata-db.tpl`) installs Apache, PHP, and the `
 
 Credentials are injected through user data for simplicity. In production, use AWS Secrets Manager instead.
 
+### CloudWatch Logging
+
+All four instances ship logs to CloudWatch Logs via the CloudWatch Agent, installed through each instance's user data script. Log groups are created and managed by Terraform (`cloudwatch.tf`) with a 30-day retention period, configurable via `var.log_retention_days`. Terraform creates the groups before instance launch, so the `logs:CreateLogGroup` action is not granted to any instance role.
+
+| Instance | Log Group | Logs Collected |
+|---|---|---|
+| Jump box | `/homelab/jump-box` | `/var/log/secure`, `/var/log/messages` |
+| NAT instance | `/homelab/nat-instance` | `/var/log/nat-setup.log`, `/var/log/messages` |
+| Main VM | `/homelab/main-vm` | `/var/log/secure`, `/var/log/messages` |
+| Web app | `/homelab/web-app` | `/var/log/httpd/access_log`, `/var/log/httpd/error_log`, `/var/log/messages` |
+
+Each instance's IAM policy is scoped to its own log group ARN. An instance cannot write to any other instance's log group.
+
 ### Terraform State
 
 State is stored locally in `terraform.tfstate`. It contains sensitive values including the private SSH key and database password. For production, use remote state in S3 with DynamoDB locking.
@@ -165,7 +181,7 @@ State is stored locally in `terraform.tfstate`. It contains sensitive values inc
 |---|---|---|
 | Security Groups | Instance-level (stateful) | Jump box: SSH from my IP only. NAT: HTTP/S from private subnet. Main VM: SSH/ICMP from jump box. Web app: HTTP/S public, SSH from jump box. PostgreSQL: port 5432 from web app SG only. |
 | NACLs | Subnet-level (stateless) | Public NACL: SSH from my IP, HTTP/S, ephemeral ports, ICMP. Private NACL: SSH from public subnet, ephemeral return traffic. |
-| IAM Roles | API-level | Main VM: S3 (specific bucket), CloudWatch, SSM. All others: CloudWatch + SSM only. |
+| IAM Roles | API-level | Main VM: S3 (specific bucket), CloudWatch (scoped to `/homelab/main-vm`), SSM. Each other instance has a dedicated CloudWatch policy scoped to its own log group only (`logs:CreateLogStream`, `logs:PutLogEvents`, `logs:DescribeLogStreams`). No instance can write to another instance's log group. |
 | Bastion Pattern | Access control | Single SSH entry point. All other instances restrict SSH to jump box SG. |
 | S3 | Data protection | Versioning, AES256 encryption, all public access blocked, bucket policy whitelists main VM role only. |
 | VPC Endpoint | Network | S3 traffic stays within the AWS network; never transits the public internet. |
@@ -210,7 +226,6 @@ Outputs after apply include all IP addresses, the RDS endpoint, S3 bucket name, 
 
 ## Future Enhancements
 
-- **CloudWatch monitoring:** Ship system and application logs; add CPU/disk/network alarms with SNS notifications
 - **VPC Flow Logs:** Enable traffic capture for security analysis and connectivity troubleshooting
 - **CI/CD pipeline:** GitHub Actions for `terraform plan` on PRs and `terraform apply` on merge
 - **Secrets Manager:** Replace user data credential injection with runtime secret fetch
