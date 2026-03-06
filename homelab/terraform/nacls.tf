@@ -96,13 +96,35 @@ resource "aws_network_acl_rule" "public_outbound_postgres_to_private" {
   to_port        = 5432
 }
 
-resource "aws_network_acl_rule" "public_outbound_ssh_to_private" {
+resource "aws_network_acl_rule" "public_outbound_postgres_to_private_2" {
   network_acl_id = aws_network_acl.public.id
   rule_number    = 130
   egress         = true
   protocol       = "tcp"
   rule_action    = "allow"
+  cidr_block     = aws_subnet.homelab_private_subnet_2.cidr_block
+  from_port      = 5432
+  to_port        = 5432
+}
+
+resource "aws_network_acl_rule" "public_outbound_ssh_to_private" {
+  network_acl_id = aws_network_acl.public.id
+  rule_number    = 140
+  egress         = true
+  protocol       = "tcp"
+  rule_action    = "allow"
   cidr_block     = aws_subnet.homelab_private_subnet.cidr_block
+  from_port      = 22
+  to_port        = 22
+}
+
+resource "aws_network_acl_rule" "public_outbound_ssh_to_private_2" {
+  network_acl_id = aws_network_acl.public.id
+  rule_number    = 150
+  egress         = true
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = aws_subnet.homelab_private_subnet_2.cidr_block
   from_port      = 22
   to_port        = 22
 }
@@ -181,7 +203,7 @@ resource "aws_network_acl_rule" "private_inbound_icmp" {
   egress         = false
   protocol       = "icmp"
   rule_action    = "allow"
-  cidr_block     = "0.0.0.0/0"
+  cidr_block     = var.vpc_cidr
   icmp_type      = -1
   icmp_code      = -1
 }
@@ -226,7 +248,7 @@ resource "aws_network_acl_rule" "private_outbound_icmp" {
   egress         = true
   protocol       = "icmp"
   rule_action    = "allow"
-  cidr_block     = "0.0.0.0/0"
+  cidr_block     = var.vpc_cidr
   icmp_type      = -1
   icmp_code      = -1
 }
