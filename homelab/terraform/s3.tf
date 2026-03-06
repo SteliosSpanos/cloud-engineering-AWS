@@ -77,7 +77,7 @@ resource "aws_vpc_endpoint" "s3" {
       {
         Sid       = "AllowHomelabBucket"
         Effect    = "Allow"
-        Principal = "*"
+        Principal = aws_iam_role.main_vm.arn
         Action = [
           "s3:GetObject",
           "s3:PutObject",
@@ -92,7 +92,7 @@ resource "aws_vpc_endpoint" "s3" {
       {
         Sid       = "AllowAWSServiceBuckets"
         Effect    = "Allow"
-        Principal = "*"
+        Principal = aws_iam_role.main_vm.arn
         Action    = "s3:GetObject"
         Resource = [
           "arn:aws:s3:::aws-ssm-${var.region}/*",
