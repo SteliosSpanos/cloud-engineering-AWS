@@ -16,34 +16,43 @@ resource "aws_kms_key" "homelab" {
         Resource = "*"
       },
       {
-        Sid    = "AllowMainVMForS3"
-        Effect = "Allow"
-        Principal = {
-          AWS = aws_iam_role.main_vm.arn
-        }
-        Action = [
-          "kms:Decrypt",
-          "kms:GenerateDataKey"
-        ]
-        Resource = "*"
-      },
-      {
         Sid    = "AllowCloudWatchLogs"
         Effect = "Allow"
         Principal = {
           Service = "logs.${var.region}.amazonaws.com"
         }
         Action = [
-          "kms:Decrypt*",
-          "kms:Encrypt*",
-          "kms:GenerateDataKey*",
+          "kms:Decrypt",
+          "kms:Encrypt",
+          "kms:GenerateDataKey",
           "kms:DescribeKey",
-          "kms:ReEncrypt*"
+          "kms:ReEncryptTo"
         ]
         Resource = "*"
         Condition = {
           ArnLike = {
             "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/${var.project_name}/*"
+          }
+        }
+      },
+      {
+        Sid    = "AllowRDSKeyUsage"
+        Effect = "Allow"
+        Principal = {
+          AWS = "*"
+        }
+        Action = [
+          "kms:CreateGrant",
+          "kms:Decrypt",
+          "kms:DescribeKey",
+          "kms:GenerateDataKey",
+          "kms:ReEncryptFrom",
+          "kms:ReEncryptTo"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "rds.${var.region}.amazonaws.com"
           }
         }
       }
