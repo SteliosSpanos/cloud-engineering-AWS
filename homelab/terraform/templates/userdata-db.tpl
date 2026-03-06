@@ -2,7 +2,7 @@
 set -x
 
 dnf update -y
-dnf install -y httpd php php-pgsql php-mysqli mariadb105 postgresql15
+dnf install -y httpd php php-pgsql jq
 systemctl enable httpd
 systemctl start httpd
 
@@ -43,36 +43,45 @@ CWEOF
   -s \
   -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
 
-cat > /var/www/html/dbinfo.inc << 'EOF'
+# Fetch database credentials from Secrets Manager
+SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "${secret_arn}" --region "${region}" --query SecretString --output text)
+DB_USER=$(echo "$SECRET_JSON" | jq -r '.username')
+DB_PASS=$(echo "$SECRET_JSON" | jq -r '.password')
+
+# Write database config outside document root
+mkdir -p /var/www/inc
+
+cat > /var/www/inc/dbinfo.inc << DBEOF
 <?php
 define('DB_SERVER',   '${db_address}');
 define('DB_PORT',     '5432');
-define('DB_USERNAME', '${db_username}');
-define('DB_PASSWORD', '${db_password}');
+define('DB_USERNAME', '$DB_USER');
+define('DB_PASSWORD', '$DB_PASS');
 define('DB_DATABASE', '${db_name}');
 ?>
-EOF
+DBEOF
+
+chmod 600 /var/www/inc/dbinfo.inc
+chown apache:apache /var/www/inc/dbinfo.inc
 
 cat > /var/www/html/SamplePage.php << 'EOF'
-<?php include "../inc/dbinfo.inc"; ?>
+<?php include "/var/www/inc/dbinfo.inc"; ?>
 <html>
 <body>
 <h1>Sample page</h1>
 <?php
 
-  /* Connect to MySQL and select the database. */
-  $connection = mysqli_connect(DB_SERVER, DB_USERNAME, DB_PASSWORD);
+  $connection = pg_connect("host=" . DB_SERVER . " port=" . DB_PORT . " dbname=" . DB_DATABASE . " user=" . DB_USERNAME . " password=" . DB_PASSWORD . " sslmode=require");
 
-  if (mysqli_connect_errno()) echo "Failed to connect to MySQL: " . mysqli_connect_error();
+  if (!$connection) {
+    echo "Failed to connect to PostgreSQL";
+    exit;
+  }
 
-  $database = mysqli_select_db($connection, DB_DATABASE);
+  VerifyEmployeesTable($connection);
 
-  /* Ensure that the EMPLOYEES table exists. */
-  VerifyEmployeesTable($connection, DB_DATABASE);
-
-  /* If input fields are populated, add a row to the EMPLOYEES table. */
-  $employee_name = htmlentities($_POST['NAME']);
-  $employee_address = htmlentities($_POST['ADDRESS']);
+  $employee_name = htmlentities($_POST['NAME'] ?? '');
+  $employee_address = htmlentities($_POST['ADDRESS'] ?? '');
 
   if (strlen($employee_name) || strlen($employee_address)) {
     AddEmployee($connection, $employee_name, $employee_address);
@@ -110,24 +119,23 @@ cat > /var/www/html/SamplePage.php << 'EOF'
 
 <?php
 
-$result = mysqli_query($connection, "SELECT * FROM EMPLOYEES");
+$result = pg_query($connection, "SELECT * FROM EMPLOYEES");
 
-while($query_data = mysqli_fetch_row($result)) {
+while($row = pg_fetch_row($result)) {
   echo "<tr>";
-  echo "<td>",$query_data[0], "</td>",
-       "<td>",$query_data[1], "</td>",
-       "<td>",$query_data[2], "</td>";
+  echo "<td>",$row[0], "</td>",
+       "<td>",$row[1], "</td>",
+       "<td>",$row[2], "</td>";
   echo "</tr>";
 }
 ?>
 
 </table>
 
-<!-- Clean up. -->
 <?php
 
-  mysqli_free_result($result);
-  mysqli_close($connection);
+  pg_free_result($result);
+  pg_close($connection);
 
 ?>
 
@@ -137,41 +145,27 @@ while($query_data = mysqli_fetch_row($result)) {
 
 <?php
 
-/* Add an employee to the table. */
 function AddEmployee($connection, $name, $address) {
-   $n = mysqli_real_escape_string($connection, $name);
-   $a = mysqli_real_escape_string($connection, $address);
+   $result = pg_query_params($connection,
+     'INSERT INTO EMPLOYEES (NAME, ADDRESS) VALUES ($1, $2)',
+     array($name, $address));
 
-   $query = "INSERT INTO EMPLOYEES (NAME, ADDRESS) VALUES ('$n', '$a');";
-
-   if(!mysqli_query($connection, $query)) echo("<p>Error adding employee data.</p>");
+   if(!$result) echo("<p>Error adding employee data.</p>");
 }
 
-/* Check whether the table exists and, if not, create it. */
-function VerifyEmployeesTable($connection, $dbName) {
-  if(!TableExists("EMPLOYEES", $connection, $dbName))
-  {
+function VerifyEmployeesTable($connection) {
+  $result = pg_query($connection,
+    "SELECT table_name FROM information_schema.tables WHERE table_name = 'employees' AND table_schema = 'public'");
+
+  if(pg_num_rows($result) == 0) {
      $query = "CREATE TABLE EMPLOYEES (
-         ID int(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+         ID SERIAL PRIMARY KEY,
          NAME VARCHAR(45),
          ADDRESS VARCHAR(90)
        )";
 
-     if(!mysqli_query($connection, $query)) echo("<p>Error creating table.</p>");
+     if(!pg_query($connection, $query)) echo("<p>Error creating table.</p>");
   }
-}
-
-/* Check for the existence of a table. */
-function TableExists($tableName, $connection, $dbName) {
-  $t = mysqli_real_escape_string($connection, $tableName);
-  $d = mysqli_real_escape_string($connection, $dbName);
-
-  $checktable = mysqli_query($connection,
-      "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_NAME = '$t' AND TABLE_SCHEMA = '$d'");
-
-  if(mysqli_num_rows($checktable) > 0) return true;
-
-  return false;
 }
 ?>
 EOF
