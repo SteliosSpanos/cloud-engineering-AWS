@@ -70,12 +70,6 @@ variable "db_username" {
   description = "Master username for RDS"
 }
 
-variable "db_password" {
-  type        = string
-  sensitive   = true
-  description = "Master password for RDS"
-}
-
 variable "log_retention_days" {
   type        = number
   default     = 30
