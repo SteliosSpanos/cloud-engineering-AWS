@@ -89,3 +89,15 @@ resource "aws_route" "private_to_nat" {
   destination_cidr_block = "0.0.0.0/0"
   network_interface_id   = aws_instance.nat_instance.primary_network_interface_id
 }
+
+resource "aws_flow_log" "vpc" {
+  vpc_id               = aws_vpc.homelab_vpc.id
+  traffic_type         = "ALL"
+  log_destination_type = "cloud-watch-logs"
+  log_destination      = aws_cloudwatch_log_group.vpc_flow_log.arn
+  iam_role_arn         = aws_iam_role.vpc_flow_log.arn
+
+  tags = {
+    Name = "${var.project_name}-vpc-flow-log"
+  }
+}
