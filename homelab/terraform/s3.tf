@@ -85,3 +85,15 @@ resource "aws_vpc_endpoint" "s3" {
     Name = "${var.project_name}-s3-endpoint"
   }
 }
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "homelab" {
+  bucket = aws_s3_bucket.homelab.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.homelab.arn
+    }
+    bucket_key_enabled = true
+  }
+}
