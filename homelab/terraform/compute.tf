@@ -28,10 +28,20 @@ resource "aws_instance" "nat_instance" {
 
   source_dest_check = false
 
+  metadata_options {
+    http_tokens = "required"
+  }
+
+  root_block_device {
+    encrypted  = true
+    kms_key_id = aws_kms_key.homelab.arn
+  }
+
   user_data = templatefile("${path.module}/templates/userdata.tpl", {
     private_subnet_cidr = aws_subnet.homelab_private_subnet.cidr_block
     log_group_name      = aws_cloudwatch_log_group.nat_instance.name
   })
+  user_data_replace_on_change = true
 
   tags = {
     Name = "${var.project_name}-nat-instance"
@@ -57,9 +67,19 @@ resource "aws_instance" "jump_box" {
   iam_instance_profile   = aws_iam_instance_profile.jump_box.name
   key_name               = aws_key_pair.homelab_key.key_name
 
+  metadata_options {
+    http_tokens = "required"
+  }
+
+  root_block_device {
+    encrypted  = true
+    kms_key_id = aws_kms_key.homelab.arn
+  }
+
   user_data = templatefile("${path.module}/templates/userdata-jump-box.tpl", {
     log_group_name = aws_cloudwatch_log_group.jump_box.name
   })
+  user_data_replace_on_change = true
 
   tags = {
     Name = "${var.project_name}-jump-box"
@@ -85,9 +105,19 @@ resource "aws_instance" "main_vm" {
   iam_instance_profile   = aws_iam_instance_profile.main_vm.name
   key_name               = aws_key_pair.homelab_key.key_name
 
+  metadata_options {
+    http_tokens = "required"
+  }
+
+  root_block_device {
+    encrypted  = true
+    kms_key_id = aws_kms_key.homelab.arn
+  }
+
   user_data = templatefile("${path.module}/templates/userdata-main-vm.tpl", {
     log_group_name = aws_cloudwatch_log_group.main_vm.name
   })
+  user_data_replace_on_change = true
 
   tags = {
     Name = "${var.project_name}-main-vm"
@@ -102,13 +132,23 @@ resource "aws_instance" "web_app" {
   iam_instance_profile   = aws_iam_instance_profile.web_app.name
   key_name               = aws_key_pair.homelab_key.key_name
 
+  metadata_options {
+    http_tokens = "required"
+  }
+
+  root_block_device {
+    encrypted  = true
+    kms_key_id = aws_kms_key.homelab.arn
+  }
+
   user_data = templatefile("${path.module}/templates/userdata-db.tpl", {
     db_address     = aws_db_instance.postgres.address
-    db_username    = var.db_username
-    db_password    = var.db_password
     db_name        = var.db_name
     log_group_name = aws_cloudwatch_log_group.web_app.name
+    secret_arn     = aws_db_instance.postgres.master_user_secret[0].secret_arn
+    region         = var.region
   })
+  user_data_replace_on_change = true
 
   tags = {
     Name = "${var.project_name}-web-app"
