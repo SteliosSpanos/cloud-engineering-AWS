@@ -118,20 +118,9 @@ resource "aws_network_acl_rule" "public_outbound_ssh_to_private" {
   to_port        = 22
 }
 
-resource "aws_network_acl_rule" "public_outbound_ssh_to_private_2" {
-  network_acl_id = aws_network_acl.public.id
-  rule_number    = 150
-  egress         = true
-  protocol       = "tcp"
-  rule_action    = "allow"
-  cidr_block     = aws_subnet.homelab_private_subnet_2.cidr_block
-  from_port      = 22
-  to_port        = 22
-}
-
 resource "aws_network_acl_rule" "public_outbound_ephemeral" {
   network_acl_id = aws_network_acl.public.id
-  rule_number    = 160
+  rule_number    = 150
   egress         = true
   protocol       = "tcp"
   rule_action    = "allow"
@@ -142,7 +131,7 @@ resource "aws_network_acl_rule" "public_outbound_ephemeral" {
 
 resource "aws_network_acl_rule" "public_outbound_icmp" {
   network_acl_id = aws_network_acl.public.id
-  rule_number    = 170
+  rule_number    = 160
   egress         = true
   protocol       = "icmp"
   rule_action    = "allow"
@@ -237,7 +226,7 @@ resource "aws_network_acl_rule" "private_outbound_ephemeral" {
   egress         = true
   protocol       = "tcp"
   rule_action    = "allow"
-  cidr_block     = "0.0.0.0/0"
+  cidr_block     = var.vpc_cidr
   from_port      = 1024
   to_port        = 65535
 }
