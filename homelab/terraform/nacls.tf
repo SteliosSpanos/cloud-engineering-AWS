@@ -131,7 +131,7 @@ resource "aws_network_acl_rule" "public_outbound_ssh_to_private_2" {
 
 resource "aws_network_acl_rule" "public_outbound_ephemeral" {
   network_acl_id = aws_network_acl.public.id
-  rule_number    = 140
+  rule_number    = 160
   egress         = true
   protocol       = "tcp"
   rule_action    = "allow"
@@ -142,7 +142,7 @@ resource "aws_network_acl_rule" "public_outbound_ephemeral" {
 
 resource "aws_network_acl_rule" "public_outbound_icmp" {
   network_acl_id = aws_network_acl.public.id
-  rule_number    = 150
+  rule_number    = 170
   egress         = true
   protocol       = "icmp"
   rule_action    = "allow"
