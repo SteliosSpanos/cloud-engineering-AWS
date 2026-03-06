@@ -180,14 +180,6 @@ resource "aws_security_group" "postgres" {
     security_groups = [aws_security_group.web_app.id]
   }
 
-  egress {
-    description = "All outbound traffic"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   tags = {
     Name = "${var.project_name}-postgres-sg"
   }
