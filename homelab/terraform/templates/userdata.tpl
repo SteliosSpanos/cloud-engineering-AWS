@@ -4,6 +4,7 @@ set -x
 
 echo "=== NAT Setup Started at $(date) ==="
 echo "Private subnet CIDR: ${private_subnet_cidr}"
+echo "Private subnet 2 CIDR: ${private_subnet_2_cidr}"
 
 # Install and configure CloudWatch Agent
 dnf install -y amazon-cloudwatch-agent
@@ -57,13 +58,15 @@ echo "Primary interface: $PRIMARY_IF"
 dnf install -y iptables
 
 # Configure NAT with iptables
-# MASQUERADE: Rewrite source IP of outbound packets from private subnet
+# MASQUERADE: Rewrite source IP of outbound packets from private subnets
 iptables -t nat -A POSTROUTING -s ${private_subnet_cidr} -o $PRIMARY_IF -j MASQUERADE
+iptables -t nat -A POSTROUTING -s ${private_subnet_2_cidr} -o $PRIMARY_IF -j MASQUERADE
 
 # FORWARD: Allow traffic forwarding
 iptables -P FORWARD ACCEPT
 iptables -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
 iptables -A FORWARD -s ${private_subnet_cidr} -j ACCEPT
+iptables -A FORWARD -s ${private_subnet_2_cidr} -j ACCEPT
 
 # Save rules for persistence
 mkdir -p /etc/iptables
