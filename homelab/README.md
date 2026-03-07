@@ -4,7 +4,7 @@
 
 Secure, cost-optimized AWS environment built with Terraform. The architecture uses a bastion host for SSH access, a NAT instance instead of NAT Gateway for cost savings, defense-in-depth security, private S3 access via VPC endpoint, a web-facing application tier backed by a managed PostgreSQL database, and centralized log collection via CloudWatch Logs.
 
-**Stack:** Terraform · VPC (1 public + 2 private subnets) · 4 EC2 instances (Amazon Linux 2023) · RDS PostgreSQL 15 · Security Groups + NACLs · IAM least-privilege roles · KMS (single key) · S3 with KMS encryption, versioning, lifecycle · VPC Gateway Endpoint · CloudWatch Logs (KMS-encrypted) · VPC Flow Logs · SSH ProxyJump automation
+**Stack:** Terraform · VPC (1 public + 2 private subnets) · 4 EC2 instances (Amazon Linux 2023) · RDS PostgreSQL 15 · Security Groups + NACLs · IAM least-privilege roles · KMS (single key) · S3 with KMS encryption, versioning, lifecycle · VPC Gateway Endpoint · CloudWatch Logs (KMS-encrypted) · VPC Flow Logs · SSH ProxyJump automation · Remote state (S3 + DynamoDB)
 
 ## Architecture
 
@@ -145,7 +145,13 @@ Uses a t3.micro with source/destination checks disabled. A user data script enab
 
 ### SSH Access
 
-Terraform generates a 4096-bit RSA key pair, writes the private key locally with 0400 permissions, and produces an SSH config with ProxyJump entries for all instances. Access to private instances is transparent:
+The SSH key pair is generated manually before `terraform apply` — it is not managed by Terraform and the private key never enters Terraform state:
+
+```bash
+ssh-keygen -t rsa -b 4096 -f terraform/.ssh/homelab-key.pem -N ""
+```
+
+Terraform reads the public key from `terraform/.ssh/homelab-key.pem.pub` and registers it as an `aws_key_pair`. Terraform produces an SSH config with ProxyJump entries for all instances. Access to private instances is transparent:
 
 ```bash
 ssh -F terraform/.ssh/config main-vm
@@ -153,6 +159,12 @@ ssh -F terraform/.ssh/config web-app
 ```
 
 The jump box is the single SSH entry point even for instances with public IPs.
+
+`StrictHostKeyChecking` is set to `accept-new` with a project-local `terraform/.ssh/known_hosts` file (gitignored). Host keys are accepted and recorded on first connect; if a key changes on reconnect, the connection is blocked (MITM protection). After `terraform destroy` + recreate, clear stale entries before reconnecting:
+
+```bash
+ssh-keygen -R <instance-ip>
+```
 
 ### Dynamic IP Whitelisting
 
@@ -192,7 +204,7 @@ Each instance's IAM policy is scoped to its own log group ARN. An instance canno
 
 | Control         | Scope                     | Details                                                                                                                                                                                                              |
 | --------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Security Groups | Instance-level (stateful) | Jump box: SSH/ICMP from my IP only. NAT: HTTP/S from private subnet, SSH from jump box. Main VM: SSH/ICMP from jump box. Web app: HTTP/S public, SSH/ICMP from jump box. PostgreSQL: port 5432 from web app SG only. |
+| Security Groups | Instance-level (stateful) | Jump box: SSH/ICMP from my IP only. NAT: HTTP/S and ICMP from both private subnets, SSH from jump box. Main VM: SSH/ICMP from jump box. Web app: HTTP/S public, SSH/ICMP from jump box. PostgreSQL: port 5432 from web app SG only. |
 | NACLs           | Subnet-level (stateless)  | Public NACL: SSH from my IP, HTTP/S, ephemeral ports, ICMP. Private NACL: SSH from public subnet, ephemeral return traffic.                                                                                          |
 | IAM Roles       | API-level                 | Main VM: S3 (specific bucket + KMS decrypt), CloudWatch (scoped log group), SSM. Web app: Secrets Manager (specific secret ARN + KMS decrypt), CloudWatch, SSM. All others: CloudWatch (scoped log group) + SSM.     |
 | KMS             | Encryption                | Single key covers CloudWatch log groups, S3, EBS root volumes, RDS storage, RDS secret. Key rotation enabled.                                                                                                        |
@@ -204,7 +216,7 @@ Each instance's IAM policy is scoped to its own log group ARN. An instance canno
 | RDS SSL         | In-transit                | `rds.force_ssl = 1` parameter group; PHP connects with `sslmode=require`.                                                                                                                                            |
 | Secrets Manager | Credentials               | RDS password managed by RDS, never in Terraform state or user data.                                                                                                                                                  |
 
-**Note on SSH key storage:** The private key is in Terraform state. Protect state files accordingly. For production, generate keys outside Terraform or use AWS Secrets Manager.
+**Note on SSH key storage:** The private key is generated outside Terraform and never enters Terraform state. Keep `terraform/.ssh/homelab-key.pem` secure and out of version control.
 
 ## Cost
 
@@ -224,8 +236,11 @@ Within Free Tier: ~$0-5/month. Stopped when idle: ~$10-15/month (EBS + RDS stora
 ## Deployment
 
 ```bash
+# 0. Generate the SSH key (once, before first apply)
+ssh-keygen -t rsa -b 4096 -f terraform/.ssh/homelab-key.pem -N ""
+
 # 1. Create terraform.tfvars with profile, region, db_name, db_username
-# 2. Initialize
+# 2. Initialize (connects to the S3 remote backend)
 terraform -chdir=terraform init
 
 # 3. Preview
@@ -242,3 +257,5 @@ terraform -chdir=terraform destroy
 ```
 
 Outputs after apply include all IP addresses, the RDS endpoint, S3 bucket name, and ready-to-use SSH commands.
+
+**Remote state bootstrap:** The S3 bucket (`homelab-tfstate-487322974754`, `eu-west-3`) and DynamoDB table (`homelab-tfstate-lock`) are created once via AWS CLI and are not managed by this project's Terraform state. State is encrypted at rest (AES256), versioned, and locked during operations.
