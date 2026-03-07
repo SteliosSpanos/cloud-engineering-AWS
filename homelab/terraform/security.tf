@@ -4,19 +4,19 @@ resource "aws_security_group" "nat_instance" {
   vpc_id      = aws_vpc.homelab_vpc.id
 
   ingress {
-    description = "HTTP from private subnet"
+    description = "HTTP from private subnets"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = [aws_subnet.homelab_private_subnet.cidr_block]
+    cidr_blocks = [aws_subnet.homelab_private_subnet.cidr_block, aws_subnet.homelab_private_subnet_2.cidr_block]
   }
 
   ingress {
-    description = "HTTPS from private subnet"
+    description = "HTTPS from private subnets"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = [aws_subnet.homelab_private_subnet.cidr_block]
+    cidr_blocks = [aws_subnet.homelab_private_subnet.cidr_block, aws_subnet.homelab_private_subnet_2.cidr_block]
   }
 
   ingress {
@@ -28,11 +28,11 @@ resource "aws_security_group" "nat_instance" {
   }
 
   ingress {
-    description = "ICMP (ping) from private subnet"
+    description = "ICMP (ping) from private subnets"
     from_port   = -1
     to_port     = -1
     protocol    = "icmp"
-    cidr_blocks = [aws_subnet.homelab_private_subnet.cidr_block]
+    cidr_blocks = [aws_subnet.homelab_private_subnet.cidr_block, aws_subnet.homelab_private_subnet_2.cidr_block]
   }
 
   egress {
