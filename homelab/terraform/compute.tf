@@ -1,21 +1,10 @@
-resource "tls_private_key" "homelab_key" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
-}
-
 resource "aws_key_pair" "homelab_key" {
   key_name   = "${var.project_name}-key"
-  public_key = tls_private_key.homelab_key.public_key_openssh
+  public_key = file("${path.module}/.ssh/homelab-key.pem.pub")
 
   tags = {
     Name = "${var.project_name}-key"
   }
-}
-
-resource "local_file" "private_key" {
-  content         = tls_private_key.homelab_key.private_key_pem
-  filename        = "${path.module}/.ssh/${var.project_name}-key.pem"
-  file_permission = "0400"
 }
 
 resource "aws_instance" "nat_instance" {
@@ -174,32 +163,32 @@ resource "local_file" "ssh_config" {
         HostName ${aws_eip.jump_box.public_ip}
         User ec2-user
         IdentityFile ${abspath("${path.module}/.ssh/${var.project_name}-key.pem")}
-        StrictHostKeyChecking no
-        UserKnownHostsFile /dev/null
+        StrictHostKeyChecking accept-new
+        UserKnownHostsFile ${path.module}/.ssh/known_hosts
 
     Host nat-instance
         HostName ${aws_instance.nat_instance.private_ip}
         User ec2-user
         IdentityFile ${abspath("${path.module}/.ssh/${var.project_name}-key.pem")}
         ProxyJump jump-box
-        StrictHostKeyChecking no
-        UserKnownHostsFile /dev/null
+        StrictHostKeyChecking accept-new
+        UserKnownHostsFile ${path.module}/.ssh/known_hosts
 
     Host main-vm
         HostName ${aws_instance.main_vm.private_ip}
         User ec2-user
         IdentityFile ${abspath("${path.module}/.ssh/${var.project_name}-key.pem")}
         ProxyJump jump-box
-        StrictHostKeyChecking no
-        UserKnownHostsFile /dev/null
+        StrictHostKeyChecking accept-new
+        UserKnownHostsFile ${path.module}/.ssh/known_hosts
 
     Host web-app
         HostName ${aws_instance.web_app.private_ip}
         User ec2-user
         IdentityFile ${abspath("${path.module}/.ssh/${var.project_name}-key.pem")}
         ProxyJump jump-box
-        StrictHostKeyChecking no
-        UserKnownHostsFile /dev/null
+        StrictHostKeyChecking accept-new
+        UserKnownHostsFile ${path.module}/.ssh/known_hosts
   EOF
 
   filename        = "${path.module}/.ssh/config"
