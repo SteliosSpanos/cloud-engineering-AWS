@@ -96,7 +96,7 @@ Secure, cost-optimized AWS environment built with Terraform. The architecture us
 
 **Security:** Three-layer defense with security groups (stateful, instance-level), NACLs (stateless, subnet-level), and IAM roles (per-instance, least-privilege). The main VM is the only instance with S3 access. Each instance has a dedicated CloudWatch IAM policy scoped to its own log group ARN.
 
-**Storage:** S3 bucket with versioning, KMS encryption (`aws:kms`), public access blocked, and `DenyNonSSLTransport` bucket policy. VPC endpoint policy restricts S3 access to the main VM's IAM role. Lifecycle rule expires noncurrent versions after 30 days.
+**Storage:** S3 bucket with versioning, KMS encryption (`aws:kms`), public access blocked, and a two-statement bucket policy: `DenyNonSSLTransport` (blocks unencrypted access) and `AllowOnlyMainVMRole` (denies all principals except the main VM IAM role and the account root). VPC endpoint policy additionally restricts S3 access to the main VM's IAM role at the network layer. Lifecycle rule expires noncurrent versions after 30 days.
 
 **KMS:** Single shared key (`alias/homelab`) with key rotation enabled, 7-day deletion window. Covers all CloudWatch log groups, S3 bucket, all EC2 EBS volumes, RDS storage, and RDS Secrets Manager secret.
 
@@ -141,7 +141,7 @@ VPC Flow Logs capture ALL traffic and ship to `/homelab/vpc-flow-log` via a dedi
 
 ### NAT Instance
 
-Uses a t3.micro with source/destination checks disabled. A user data script enables IP forwarding, configures iptables MASQUERADE rules, and creates a systemd service to persist rules across reboots. This saves ~$25-30/month vs. NAT Gateway.
+Uses a t3.micro with source/destination checks disabled. A user data script enables IP forwarding, configures iptables MASQUERADE rules for both private subnets (10.0.2.0/24 and 10.0.3.0/24), and creates a systemd service to persist rules across reboots. This saves ~$25-30/month vs. NAT Gateway.
 
 ### SSH Access
 
@@ -204,13 +204,13 @@ Each instance's IAM policy is scoped to its own log group ARN. An instance canno
 
 | Control         | Scope                     | Details                                                                                                                                                                                                              |
 | --------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Security Groups | Instance-level (stateful) | Jump box: SSH/ICMP from my IP only. NAT: HTTP/S and ICMP from both private subnets, SSH from jump box. Main VM: SSH/ICMP from jump box. Web app: HTTP/S public, SSH/ICMP from jump box. PostgreSQL: port 5432 from web app SG only. |
+| Security Groups | Instance-level (stateful) | Jump box: SSH/ICMP from my IP only. NAT: HTTP/S and ICMP from both private subnets, SSH from jump box. Main VM: SSH/ICMP from jump box. Web app: HTTP/S public, SSH/ICMP from jump box. PostgreSQL: port 5432 from web app SG only, egress restricted to VPC CIDR. |
 | NACLs           | Subnet-level (stateless)  | Public NACL: SSH from my IP, HTTP/S, ephemeral ports, ICMP. Private NACL: SSH from public subnet, ephemeral return traffic.                                                                                          |
 | IAM Roles       | API-level                 | Main VM: S3 (specific bucket + KMS decrypt), CloudWatch (scoped log group), SSM. Web app: Secrets Manager (specific secret ARN + KMS decrypt), CloudWatch, SSM. All others: CloudWatch (scoped log group) + SSM.     |
 | KMS             | Encryption                | Single key covers CloudWatch log groups, S3, EBS root volumes, RDS storage, RDS secret. Key rotation enabled.                                                                                                        |
 | IMDSv2          | Instance metadata         | `http_tokens = "required"` on all EC2 instances.                                                                                                                                                                     |
 | Bastion Pattern | Access control            | Single SSH entry point. All other instances restrict SSH to jump box SG.                                                                                                                                             |
-| S3              | Data protection           | Versioning, KMS encryption, all public access blocked, `DenyNonSSLTransport` bucket policy, VPC endpoint policy restricts to main VM role.                                                                           |
+| S3              | Data protection           | Versioning, KMS encryption, all public access blocked. Bucket policy: `DenyNonSSLTransport` + `AllowOnlyMainVMRole` (denies all except main VM role and account root). VPC endpoint policy additionally restricts to main VM role at the network layer. |
 | VPC Endpoint    | Network                   | S3 traffic stays within the AWS network; never transits the public internet.                                                                                                                                         |
 | VPC Flow Logs   | Visibility                | ALL traffic logged to CloudWatch.                                                                                                                                                                                    |
 | RDS SSL         | In-transit                | `rds.force_ssl = 1` parameter group; PHP connects with `sslmode=require`.                                                                                                                                            |
