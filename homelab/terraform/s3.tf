@@ -58,6 +58,24 @@ resource "aws_s3_bucket_policy" "homelab" {
             "aws:SecureTransport" = "false"
           }
         }
+      },
+      {
+        Sid       = "AllowOnlyMainVMRole"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          aws_s3_bucket.homelab.arn,
+          "${aws_s3_bucket.homelab.arn}/*"
+        ]
+        Condition = {
+          StringNotEquals = {
+            "aws:PrincipalArn" = [
+              aws_iam_role.main_vm.arn,
+              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+            ]
+          }
+        }
       }
     ]
   })
