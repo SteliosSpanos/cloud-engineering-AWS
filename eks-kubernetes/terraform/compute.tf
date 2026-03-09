@@ -1,6 +1,6 @@
 resource "aws_key_pair" "bastion" {
   key_name   = "${var.project_name}-key"
-  public_key = file("${path.module}/.ssh/bastion.pem.pub")
+  public_key = file("${path.module}/.ssh/bastion.pub")
 
   tags = {
     Name = "${var.project_name}"
@@ -16,7 +16,7 @@ resource "aws_iam_policy" "bastion_eks" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["eks:DescribeCluster", "eks:ListClusters"]
+        Action   = ["eks:DescribeCluster"]
         Resource = aws_eks_cluster.this.arn
       }
     ]
@@ -53,7 +53,7 @@ resource "aws_security_group" "ec2_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["${data.external.my_ip.result.io}/32"]
+    cidr_blocks = ["${data.external.my_ip.result.ip}/32"]
   }
 
   egress {
@@ -77,7 +77,7 @@ resource "aws_instance" "bastion" {
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
   key_name               = aws_key_pair.bastion.key_name
 
-  user_data                   = templatefile("${path.module}/templates/userdata.tpl")
+  user_data                   = templatefile("${path.module}/templates/userdata.tpl", {})
   user_data_replace_on_change = true
 
   tags = {
