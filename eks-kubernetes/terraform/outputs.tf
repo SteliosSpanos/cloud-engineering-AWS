@@ -8,7 +8,7 @@ output "cluster_endpoint" {
   value       = aws_eks_cluster.this.endpoint
 }
 
-output "bation_public_ip" {
+output "bastion_public_ip" {
   description = "Bastion EC2 public IP"
   value       = aws_instance.bastion.public_ip
 }
