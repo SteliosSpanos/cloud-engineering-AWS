@@ -20,14 +20,20 @@ variable "vpc_cidr" {
   description = "VPC CIDR block"
 }
 
-variable "subnet_cidr" {
+variable "kubernetes_version" {
   type        = string
-  default     = "10.0.1.0/24"
-  description = "Subnet CIDR block"
+  default     = "1.31"
+  description = "EKS Kubernetes version"
 }
 
 variable "instance_type" {
   type        = string
   default     = "t3.micro"
-  description = "EC2 instance type"
+  description = "EC2 instance type for the bastion host"
+}
+
+variable "node_instance_type" {
+  type        = string
+  default     = "t3.micro"
+  description = "EC2 instance type for EKS worker nodes"
 }
