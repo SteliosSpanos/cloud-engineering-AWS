@@ -34,6 +34,6 @@ variable "instance_type" {
 
 variable "node_instance_type" {
   type        = string
-  default     = "t3.micro"
+  default     = "t3.medium"
   description = "EC2 instance type for EKS worker nodes"
 }
