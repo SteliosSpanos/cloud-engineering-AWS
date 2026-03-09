@@ -52,9 +52,9 @@ resource "aws_eip" "nat" {
 
 resource "aws_nat_gateway" "nat" {
   allocation_id = aws_eip.nat.id
-  subnet_id     = aws_subnet.cluster_public[0].id
+  subnet_id     = aws_subnet.public[0].id
 
-  depends_on = [aws_internet_gateway.cluster-igw]
+  depends_on = [aws_internet_gateway.igw]
 
   tags = {
     Name = "${var.project_name}-nat"
@@ -70,14 +70,15 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.cluster_public_subnet.id
-  route_table_id = aws_route_table.cluster_public_rt.id
+  count          = 2
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
 }
 
 resource "aws_route" "public_igw" {
-  route_table_id         = aws_route_table.cluster_public_rt.id
+  route_table_id         = aws_route_table.public.id
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.cluster-igw.id
+  gateway_id             = aws_internet_gateway.igw.id
 }
 
 
@@ -87,6 +88,12 @@ resource "aws_route_table" "private" {
   tags = {
     Name = "${var.project_name}-private-rt"
   }
+}
+
+resource "aws_route" "private_nat" {
+  route_table_id         = aws_route_table.private.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.nat.id
 }
 
 resource "aws_route_table_association" "private" {
