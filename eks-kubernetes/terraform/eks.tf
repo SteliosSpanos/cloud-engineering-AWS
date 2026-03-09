@@ -14,7 +14,7 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
 
 resource "aws_iam_role" "eks_node_role" {
   name               = "${var.project_name}-node-role"
-  assume_role_policy = data.aws_iam_policy_document.ec2_assume_role
+  assume_role_policy = data.aws_iam_policy_document.ec2_assume_role.json
 
   tags = {
     Name = "${var.project_name}-node-role"
@@ -50,7 +50,7 @@ resource "aws_eks_cluster" "this" {
   }
 
   enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
-  depends_on                = [aws_iam_role_policy_atachment.eks_cluster_policy]
+  depends_on                = [aws_iam_role_policy_attachment.eks_cluster_policy]
 
   tags = {
     Name = var.project_name
@@ -90,11 +90,10 @@ resource "aws_eks_access_entry" "bastion" {
 resource "aws_eks_access_policy_association" "bastion" {
   cluster_name  = aws_eks_cluster.this.name
   principal_arn = aws_iam_role.ec2_role.arn
-  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy"
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
 
   access_scope {
-    type       = "namespace"
-    namespaces = ["default"]
+    type = "cluster"
   }
 
   depends_on = [aws_eks_access_entry.bastion]
