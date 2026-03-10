@@ -9,7 +9,6 @@ chmod +x kubectl && mv kubectl /usr/local/bin/
 
 EKSCTL_VERSION="0.191.0"
 curl -sLO "https://github.com/eksctl-io/eksctl/releases/download/v${EKSCTL_VERSION}/eksctl_Linux_amd64.tar.gz"
-curl -sLO
-"https://github.com/eksctl-io/eksctl/releases/download/v${EKSCTL_VERSION}/eksctl_checksums.txt"
+curl -sLO "https://github.com/eksctl-io/eksctl/releases/download/v${EKSCTL_VERSION}/eksctl_checksums.txt"
 grep "eksctl_Linux_amd64.tar.gz" eksctl_checksums.txt | sha256sum --check
 tar -xzf eksctl_Linux_amd64.tar.gz -C /tmp && mv /tmp/eksctl /usr/local/bin/
