@@ -6,13 +6,15 @@ A production-style Amazon EKS cluster on AWS, fully provisioned with Terraform. 
 
 The cluster access model uses EKS Access Entries, the modern API-based approach that replaces the legacy `aws-auth` ConfigMap. The bastion is granted read-only `kubectl` access through IAM, and the EKS API endpoint is restricted to a single IP at the network level. Infrastructure for this kind of cluster is what underpins most production Kubernetes deployments on AWS, and working through each piece, node IAM roles, subnet tagging for the load balancer controller, dynamic IP injection, builds fluency with how EKS actually works.
 
-**Technologies:** Terraform · Amazon EKS 1.31 · EC2 (Bastion + Managed Node Group) · VPC (public + private subnets across 2 AZs) · NAT Gateway · IAM (EKS Access Entries) · CloudWatch (Control Plane Logs) · AWS CLI · kubectl · eksctl
+**Technologies:** Terraform · Amazon EKS 1.31 · EC2 (Bastion + Managed Node Group) · VPC (public + private subnets across 2 AZs) · NAT Gateway · IAM (EKS Access Entries) · CloudWatch (Control Plane Logs) · Amazon ECR · Docker · Flask · AWS CLI · kubectl · eksctl
 
 ---
 
 ## Architecture
 
 ![Architecture Diagram](assets/eks.png)
+
+![Architecture Diagram](assets/k8.png)
 
 ```
 Your Machine (SSH)
@@ -47,6 +49,10 @@ EKS Cluster (control plane)
 eks-kubernetes/
 ├── README.md
 ├── .gitignore
+├── nextwork-flask-backend/   # Flask app source + Dockerfile
+│   ├── app.py                # Hacker News search API (flask-restx, port 8080)
+│   ├── requirements.txt      # Pinned Python dependencies
+│   └── Dockerfile            # python:3.9-alpine image
 └── terraform/
     ├── providers.tf          # AWS provider ~> 5.0, Terraform >= 1.6
     ├── variables.tf          # All input variables (profile, region, CIDRs, instance types)
@@ -54,7 +60,8 @@ eks-kubernetes/
     ├── network.tf            # VPC, 4 subnets, IGW, NAT Gateway, route tables
     ├── compute.tf            # Bastion EC2, IAM role, security group, key pair
     ├── eks.tf                # EKS cluster, node group, IAM roles, access entry
-    ├── outputs.tf            # Cluster name, endpoint, bastion IP, kubeconfig command
+    ├── ecr.tf                # ECR repository with image scanning + lifecycle policy
+    ├── outputs.tf            # Cluster name, endpoint, bastion IP, kubeconfig command, ECR URL
     ├── templates/
     │   └── userdata.tpl      # Bastion bootstrap: kubectl + eksctl with SHA-256 verification
     └── scripts/
@@ -88,6 +95,10 @@ Without these tags, the AWS Load Balancer Controller cannot determine which subn
 
 `scripts/my_ip_json.sh` is called via a Terraform `external` data source at plan time. It queries the current public IP and returns it as JSON. This value is used in two places: the bastion security group's SSH ingress rule, and the EKS cluster's `public_access_cidrs` list. The result is that no IP address is ever hardcoded, `terraform plan` always picks up the current IP, and the infrastructure is automatically updated if the IP changes on the next apply.
 
+### ECR Repository
+
+`ecr.tf` provisions a private ECR repository (`eks-cluster-repo`) for the Flask application image. Image scanning on push is enabled so that CVE reports are generated automatically for every pushed image. The encryption type is `AES256` (AWS-managed keys). A lifecycle policy retains only the 10 most recent images, preventing unbounded storage growth. The node group already carries `AmazonEC2ContainerRegistryReadOnly`, so worker nodes can pull images from the repository without any additional credentials.
+
 ### Managed Node Group
 
 Worker nodes use a managed node group rather than self-managed EC2 instances. AWS handles the underlying Auto Scaling Group, launch templates, and node draining during updates. The node group is placed exclusively in the private subnets, and `remote_access` is not configured and the nodes are not directly SSH-accessible. Operational access to workloads goes through `kubectl exec` or logs, not SSH.
@@ -116,6 +127,8 @@ The user data script does not install `kubectl` and `eksctl` via a package manag
 | Control Plane Logs          | Visibility      | All five log types enabled: `api`, `audit`, `authenticator`, `controllerManager`, `scheduler`. Shipped to CloudWatch.                               |
 | SSH Key Management          | Credentials     | Key pair generated locally before `terraform apply`. The private key never enters Terraform state. Public key only is registered as `aws_key_pair`. |
 | Binary Integrity            | Supply Chain    | `kubectl` and `eksctl` installs pinned to specific versions with SHA-256 checksum verification before execution.                                    |
+| ECR Image Scanning          | Supply Chain    | `scan_on_push = true` triggers automatic CVE scanning on every image push. Results are visible in the ECR console.                                  |
+| ECR Encryption              | Data at rest    | Repository encrypted with `AES256` (AWS-managed keys). Images are encrypted at rest in S3 backing storage.                                          |
 
 ---
 
@@ -129,6 +142,7 @@ The user data script does not install `kubectl` and `eksctl` via a package manag
 | NAT Gateway (base + data transfer) | ~$32/month                                |
 | Elastic IP (attached to NAT)       | $0 while attached                         |
 | CloudWatch (5 log types)           | ~$1–2/month                               |
+| ECR (storage + data transfer)      | ~$0–1/month (minimal for a single image)  |
 | **Total (24/7)**                   | **~$165/month**                           |
 
 The EKS control plane is the dominant cost at $0.10/hour regardless of whether any workloads are running. Destroy the cluster when not in use — `terraform destroy` tears everything down cleanly. The bastion falls within the free tier for the first 12 months and costs ~$8/month after.
@@ -159,16 +173,23 @@ aws eks update-kubeconfig --name eks-cluster --region <region>
 # 6. Verify cluster access
 kubectl get nodes
 
-# 7. Secret Mission — test resilience
+# 7. Build and push the Flask image to ECR (run locally)
+# The exact commands are printed by the ecr_push_commands output after apply
+aws ecr get-login-password --profile <profile> --region <region> | \
+  docker login --username AWS --password-stdin <ecr_repository_url>
+docker build -t <ecr_repository_url>:latest ./nextwork-flask-backend
+docker push <ecr_repository_url>:latest
+
+# 8. Secret Mission — test resilience
 kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
 kubectl get pods -w
 kubectl uncordon <node-name>
 
-# 8. Tear down
+# 9. Tear down
 terraform -chdir=terraform destroy -var="profile=<profile>" -var="region=<region>"
 ```
 
-Outputs after apply include the cluster name, API endpoint, bastion public IP, and a ready-to-paste `aws eks update-kubeconfig` command.
+Outputs after apply include the cluster name, API endpoint, bastion public IP, a ready-to-paste `aws eks update-kubeconfig` command, the ECR repository URL, and the exact `docker login / build / push` commands.
 
 ---
 
@@ -189,3 +210,7 @@ Outputs after apply include the cluster name, API endpoint, bastion public IP, a
 - **user_data_replace_on_change prevents config drift on long-running bastions.** Without this flag, updating the bootstrap script would have no effect on an already-running instance. The flag forces a replacement, ensuring the running instance always reflects the current template.
 
 - **Pinning binaries with SHA-256 verification is a meaningful control.** A bootstrap script that curls and executes a binary from the internet without verification is a common attack surface. Hardcoding both the version and the expected checksum means the instance refuses to start if the binary has been tampered with.
+
+- **ECR lifecycle policies prevent unbounded storage costs.** Without a lifecycle policy, every `docker push` adds a new image layer set that persists indefinitely. A policy that retains only the last 10 images keeps storage costs near zero while still preserving enough history to roll back a bad deployment.
+
+- **`scan_on_push` makes CVE visibility automatic.** Enabling image scanning at the repository level means every pushed image is immediately assessed against known vulnerabilities. There is no separate pipeline step to configure — the report is attached to the image in ECR and visible in the console as soon as the push completes.

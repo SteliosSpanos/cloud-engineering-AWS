@@ -2,7 +2,7 @@
 
 ## Overview
 
-This directory contains the Terraform configuration that provisions the full EKS cluster environment. It creates the VPC and subnets, the bastion EC2 instance, the EKS control plane, the managed worker node group, all IAM roles and policies, and the EKS Access Entry that grants the bastion read-only kubectl access.
+This directory contains the Terraform configuration that provisions the full EKS cluster environment. It creates the VPC and subnets, the bastion EC2 instance, the EKS control plane, the managed worker node group, all IAM roles and policies, the EKS Access Entry that grants the bastion read-only kubectl access, and a private ECR repository for application images.
 
 The configuration is split across logical files(`network.tf`, `compute.tf`, `eks.tf`) so each file corresponds to a distinct infrastructure layer. State is stored locally (no remote backend). The SSH key pair and your current public IP are both sourced outside of Terraform at plan time.
 
@@ -27,6 +27,7 @@ The configured AWS profile must have permissions to create and manage:
 - VPC, subnets, route tables, IGW, NAT Gateway, EIP
 - EC2 instances, security groups, IAM roles and policies, key pairs
 - EKS clusters, node groups, access entries, and access policy associations
+- ECR repositories and lifecycle policies
 - CloudWatch log groups (created automatically by EKS for control plane logs)
 
 **Tools**
@@ -49,7 +50,8 @@ terraform/
 ├── network.tf            # VPC, public/private subnets (2 AZs), IGW, NAT, route tables
 ├── compute.tf            # Bastion EC2, IAM role + policy, security group, key pair
 ├── eks.tf                # EKS cluster, node group, IAM roles, access entry + association
-├── outputs.tf            # Cluster name, endpoint, bastion IP, kubeconfig command
+├── ecr.tf                # ECR repository with image scanning and lifecycle policy
+├── outputs.tf            # Cluster name, endpoint, bastion IP, kubeconfig command, ECR URL + push commands
 ├── templates/
 │   └── userdata.tpl      # Bastion bootstrap script (kubectl + eksctl, SHA-256 verified)
 └── scripts/
@@ -64,7 +66,8 @@ terraform/
 | `network.tf`   | `aws_vpc`, `aws_subnet` ×4, `aws_internet_gateway`, `aws_eip`, `aws_nat_gateway`, `aws_route_table` ×2, `aws_route_table_association` ×4                                      |
 | `compute.tf`   | `aws_key_pair`, `aws_iam_policy`, `aws_iam_role`, `aws_iam_instance_profile`, `aws_security_group`, `aws_instance` (bastion)                                                  |
 | `eks.tf`       | `aws_iam_role` ×2 (cluster + node), `aws_iam_role_policy_attachment` ×4, `aws_eks_cluster`, `aws_eks_node_group`, `aws_eks_access_entry`, `aws_eks_access_policy_association` |
-| `outputs.tf`   | `cluster_name`, `cluster_endpoint`, `bastion_public_ip`, `kubeconfig_command`                                                                                                 |
+| `ecr.tf`       | `aws_ecr_repository` (scan on push, AES256 encryption), `aws_ecr_lifecycle_policy` (retain last 10 images)                                                                    |
+| `outputs.tf`   | `cluster_name`, `cluster_endpoint`, `bastion_public_ip`, `kubeconfig_command`, `ecr_repository_url`, `docker_push_commands`                                                   |
 
 ---
 
@@ -141,16 +144,32 @@ aws eks update-kubeconfig --name eks-cluster --region <region>
 kubectl get nodes
 ```
 
+**After apply — push the Flask image to ECR**
+
+The `docker_push_commands` output prints the exact commands (run locally, not on the bastion):
+
+```bash
+# Authenticate Docker to ECR
+aws ecr get-login-password --profile <profile> --region <region> | \
+  docker login --username AWS --password-stdin <ecr_repository_url>
+
+# Build and push
+docker build -t <ecr_repository_url>:latest ../nextwork-flask-backend
+docker push <ecr_repository_url>:latest
+```
+
 ---
 
 ## Outputs
 
-| Name                 | Description                                                        |
-| -------------------- | ------------------------------------------------------------------ |
-| `cluster_name`       | The EKS cluster name (value of `var.project_name`)                 |
-| `cluster_endpoint`   | HTTPS endpoint of the EKS API server                               |
-| `bastion_public_ip`  | Public IP address of the bastion EC2 instance                      |
-| `kubeconfig_command` | Ready-to-paste `aws eks update-kubeconfig` command for the bastion |
+| Name                   | Description                                                        |
+| ---------------------- | ------------------------------------------------------------------ |
+| `cluster_name`         | The EKS cluster name (value of `var.project_name`)                 |
+| `cluster_endpoint`     | HTTPS endpoint of the EKS API server                               |
+| `bastion_public_ip`    | Public IP address of the bastion EC2 instance                      |
+| `kubeconfig_command`   | Ready-to-paste `aws eks update-kubeconfig` command for the bastion |
+| `ecr_repository_url`   | Full ECR repository URL for tagging and pushing images             |
+| `docker_push_commands` | Ready-to-paste `docker login / build / push` sequence              |
 
 ---
 
@@ -172,6 +191,17 @@ The key pair is generated outside of Terraform deliberately. If Terraform manage
 2. `eks.tf` — EKS cluster `public_access_cidrs` list (`var_ip/32`)
 
 If your IP changes between deploys, the next `terraform apply` will detect the drift and update both resources automatically. No manual intervention is needed.
+
+### ECR Repository
+
+`ecr.tf` creates a single private ECR repository named `${var.project_name}-repo`. Two settings are enabled by default:
+
+- **`scan_on_push = true`** — every pushed image is automatically scanned for CVEs. Results appear in the ECR console attached to the image digest.
+- **Lifecycle policy** — retains only the 10 most recent images (by any tag status). Older images are expired automatically, keeping storage costs near zero.
+
+The worker node IAM role already has `AmazonEC2ContainerRegistryReadOnly` attached (via `eks.tf`), so nodes can pull images from the repository at runtime without any additional credential configuration.
+
+The `docker_push_commands` output prints the full `docker login / build / push` sequence with the correct registry URL and profile interpolated. Run these commands locally after `terraform apply` to publish the application image before deploying workloads to the cluster.
 
 ### EKS Cluster Provisioning Time
 
