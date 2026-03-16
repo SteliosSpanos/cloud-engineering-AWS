@@ -66,7 +66,7 @@ terraform/
 | `network.tf`   | `aws_vpc`, `aws_subnet` ×4, `aws_internet_gateway`, `aws_eip`, `aws_nat_gateway`, `aws_route_table` ×2, `aws_route_table_association` ×4                                      |
 | `compute.tf`   | `aws_key_pair`, `aws_iam_policy`, `aws_iam_role`, `aws_iam_instance_profile`, `aws_security_group`, `aws_instance` (bastion)                                                  |
 | `eks.tf`       | `aws_iam_role` ×2 (cluster + node), `aws_iam_role_policy_attachment` ×4, `aws_eks_cluster`, `aws_eks_node_group`, `aws_eks_access_entry`, `aws_eks_access_policy_association` |
-| `ecr.tf`       | `aws_ecr_repository` (scan on push, AES256 encryption), `aws_ecr_lifecycle_policy` (retain last 10 images)                                                                    |
+| `ecr.tf`       | `aws_ecr_repository` (scan on push, AES256 encryption, IMMUTABLE tags), `aws_ecr_lifecycle_policy` (retain last 10 images)                                                    |
 | `outputs.tf`   | `cluster_name`, `cluster_endpoint`, `bastion_public_ip`, `kubeconfig_command`, `ecr_repository_url`, `docker_push_commands`                                                   |
 
 ---
@@ -158,6 +158,14 @@ docker build -t <ecr_repository_url>:latest ../nextwork-flask-backend
 docker push <ecr_repository_url>:latest
 ```
 
+After pushing, substitute the ECR URL into the image field of `../k8s/flask-deployment.yaml`, then apply the manifests from the bastion:
+
+```bash
+kubectl apply -f ../k8s/flask-deployment.yaml
+kubectl apply -f ../k8s/flask-service.yaml
+kubectl rollout status deployment/nextwork-flask-backend
+```
+
 ---
 
 ## Outputs
@@ -194,14 +202,21 @@ If your IP changes between deploys, the next `terraform apply` will detect the d
 
 ### ECR Repository
 
-`ecr.tf` creates a single private ECR repository named `${var.project_name}-repo`. Two settings are enabled by default:
+`ecr.tf` creates a single private ECR repository named `${var.project_name}-repo`. Three settings are enabled by default:
 
+- **`image_tag_mutability = "IMMUTABLE"`** — once an image is pushed with a given tag, that tag cannot be reused or overwritten. This forces explicit versioning and prevents silent image substitution: a `docker push :latest` on top of an existing `:latest` tag will be rejected by ECR.
 - **`scan_on_push = true`** — every pushed image is automatically scanned for CVEs. Results appear in the ECR console attached to the image digest.
 - **Lifecycle policy** — retains only the 10 most recent images (by any tag status). Older images are expired automatically, keeping storage costs near zero.
 
 The worker node IAM role already has `AmazonEC2ContainerRegistryReadOnly` attached (via `eks.tf`), so nodes can pull images from the repository at runtime without any additional credential configuration.
 
 The `docker_push_commands` output prints the full `docker login / build / push` sequence with the correct registry URL and profile interpolated. Run these commands locally after `terraform apply` to publish the application image before deploying workloads to the cluster.
+
+### userdata.tpl Template Escaping
+
+Terraform's `templatefile()` function processes `${...}` as template interpolation at render time. Because `templates/userdata.tpl` is a bash script that uses shell variable references like `${KUBECTL_VERSION}`, those must be escaped as `$${KUBECTL_VERSION}` in the template file. Terraform renders `$$` as a literal `$`, so the EC2 instance receives the correct bash syntax at runtime.
+
+If you add new bash variable references to `userdata.tpl`, always use the `$$` prefix. A plain `${VAR}` will cause `terraform plan` to fail with "vars map does not contain key" unless you also add `VAR` to the `templatefile()` vars map in `compute.tf`.
 
 ### EKS Cluster Provisioning Time
 
