@@ -145,7 +145,7 @@ Uses a t3.micro with source/destination checks disabled. A user data script enab
 
 ### SSH Access
 
-The SSH key pair is generated manually before `terraform apply` — it is not managed by Terraform and the private key never enters Terraform state:
+The SSH key pair is generated manually before `terraform apply` and it is not managed by Terraform and the private key never enters Terraform state:
 
 ```bash
 ssh-keygen -t rsa -b 4096 -f terraform/.ssh/homelab-key.pem -N ""
