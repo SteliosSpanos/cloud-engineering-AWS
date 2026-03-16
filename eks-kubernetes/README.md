@@ -52,7 +52,10 @@ eks-kubernetes/
 ├── nextwork-flask-backend/   # Flask app source + Dockerfile
 │   ├── app.py                # Hacker News search API (flask-restx, port 8080)
 │   ├── requirements.txt      # Pinned Python dependencies
-│   └── Dockerfile            # python:3.9-alpine image
+│   └── Dockerfile            # python:3.9-alpine, runs as non-root appuser
+├── k8s/
+│   ├── flask-deployment.yaml # 3-replica Deployment with security contexts, probes, resource limits
+│   └── flask-service.yaml    # NodePort Service exposing port 8080
 └── terraform/
     ├── providers.tf          # AWS provider ~> 5.0, Terraform >= 1.6
     ├── variables.tf          # All input variables (profile, region, CIDRs, instance types)
@@ -115,20 +118,23 @@ The user data script does not install `kubectl` and `eksctl` via a package manag
 
 ## Security
 
-| Control                     | Scope           | Details                                                                                                                                             |
-| --------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bastion IAM Role            | API-level       | Single permission: `eks:DescribeCluster` on the specific cluster ARN. No wildcard actions, no other AWS service access.                             |
-| EKS Access Entry            | Kubernetes RBAC | Bastion EC2 role mapped to `AmazonEKSViewPolicy` (read-only). Not a cluster admin. No legacy `aws-auth` ConfigMap editing.                          |
-| EKS API Public Access CIDRs | Network         | Public endpoint enabled but `public_access_cidrs` restricted to your IP only. Anyone outside that CIDR cannot reach the API server.                 |
-| Worker Node Subnets         | Network         | All worker nodes in private subnets with no public IP addresses. No direct inbound internet connectivity.                                           |
-| NAT Gateway                 | Egress          | Nodes reach the internet (ECR, AWS APIs) via NAT only — no inbound path from the internet to nodes.                                                 |
-| Bastion SSH Ingress         | Network         | Security group allows SSH (port 22) from your current IP only, injected at plan time by `my_ip_json.sh`.                                            |
-| Bastion SSH Egress          | Network         | Egress locked to HTTPS (443) only. No unrestricted outbound access to prevent lateral movement from a compromised bastion.                          |
-| Control Plane Logs          | Visibility      | All five log types enabled: `api`, `audit`, `authenticator`, `controllerManager`, `scheduler`. Shipped to CloudWatch.                               |
-| SSH Key Management          | Credentials     | Key pair generated locally before `terraform apply`. The private key never enters Terraform state. Public key only is registered as `aws_key_pair`. |
-| Binary Integrity            | Supply Chain    | `kubectl` and `eksctl` installs pinned to specific versions with SHA-256 checksum verification before execution.                                    |
-| ECR Image Scanning          | Supply Chain    | `scan_on_push = true` triggers automatic CVE scanning on every image push. Results are visible in the ECR console.                                  |
-| ECR Encryption              | Data at rest    | Repository encrypted with `AES256` (AWS-managed keys). Images are encrypted at rest in S3 backing storage.                                          |
+| Control                     | Scope           | Details                                                                                                                                                                                            |
+| --------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bastion IAM Role            | API-level       | Single permission: `eks:DescribeCluster` on the specific cluster ARN. No wildcard actions, no other AWS service access.                                                                            |
+| EKS Access Entry            | Kubernetes RBAC | Bastion EC2 role mapped to `AmazonEKSViewPolicy` (read-only). Not a cluster admin. No legacy `aws-auth` ConfigMap editing.                                                                         |
+| EKS API Public Access CIDRs | Network         | Public endpoint enabled but `public_access_cidrs` restricted to your IP only. Anyone outside that CIDR cannot reach the API server.                                                                |
+| Worker Node Subnets         | Network         | All worker nodes in private subnets with no public IP addresses. No direct inbound internet connectivity.                                                                                          |
+| NAT Gateway                 | Egress          | Nodes reach the internet (ECR, AWS APIs) via NAT only — no inbound path from the internet to nodes.                                                                                                |
+| Bastion SSH Ingress         | Network         | Security group allows SSH (port 22) from your current IP only, injected at plan time by `my_ip_json.sh`.                                                                                           |
+| Bastion SSH Egress          | Network         | Egress locked to HTTPS (443) only. No unrestricted outbound access to prevent lateral movement from a compromised bastion.                                                                         |
+| Control Plane Logs          | Visibility      | All five log types enabled: `api`, `audit`, `authenticator`, `controllerManager`, `scheduler`. Shipped to CloudWatch.                                                                              |
+| SSH Key Management          | Credentials     | Key pair generated locally before `terraform apply`. The private key never enters Terraform state. Public key only is registered as `aws_key_pair`.                                                |
+| Binary Integrity            | Supply Chain    | `kubectl` and `eksctl` installs pinned to specific versions with SHA-256 checksum verification before execution.                                                                                   |
+| ECR Image Scanning          | Supply Chain    | `scan_on_push = true` triggers automatic CVE scanning on every image push. Results are visible in the ECR console.                                                                                 |
+| ECR Immutable Tags          | Supply Chain    | `image_tag_mutability = "IMMUTABLE"`, a pushed tag cannot be overwritten. Prevents silent image substitution attacks.                                                                              |
+| ECR Encryption              | Data at rest    | Repository encrypted with `AES256` (AWS-managed keys). Images are encrypted at rest in S3 backing storage.                                                                                         |
+| Container Non-Root User     | Runtime         | Dockerfile adds a dedicated `appuser` (UID 1000) and switches to it before `CMD`. The Kubernetes `runAsNonRoot: true` context rejects the pod if the image violates this.                          |
+| Kubernetes Security Context | Runtime         | Pods run with `readOnlyRootFilesystem`, `allowPrivilegeEscalation: false`, all Linux capabilities dropped, and `seccompProfile: RuntimeDefault`. Defence-in-depth beyond network and IAM controls. |
 
 ---
 
@@ -180,12 +186,21 @@ aws ecr get-login-password --profile <profile> --region <region> | \
 docker build -t <ecr_repository_url>:latest ./nextwork-flask-backend
 docker push <ecr_repository_url>:latest
 
-# 8. Secret Mission — test resilience
+# 8. Deploy the Flask application to Kubernetes (run on the bastion)
+# First substitute your ECR URL into the image field in k8s/flask-deployment.yaml, then:
+kubectl apply -f k8s/flask-deployment.yaml
+kubectl apply -f k8s/flask-service.yaml
+
+# Verify. Rollout completes when all 3 replicas pass readiness
+kubectl rollout status deployment/nextwork-flask-backend
+kubectl get svc nextwork-flask-backend   # shows the assigned NodePort
+
+# 9. Secret Mission
 kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
 kubectl get pods -w
 kubectl uncordon <node-name>
 
-# 9. Tear down
+# 10. Tear down
 terraform -chdir=terraform destroy -var="profile=<profile>" -var="region=<region>"
 ```
 
@@ -214,3 +229,7 @@ Outputs after apply include the cluster name, API endpoint, bastion public IP, a
 - **ECR lifecycle policies prevent unbounded storage costs.** Without a lifecycle policy, every `docker push` adds a new image layer set that persists indefinitely. A policy that retains only the last 10 images keeps storage costs near zero while still preserving enough history to roll back a bad deployment.
 
 - **`scan_on_push` makes CVE visibility automatic.** Enabling image scanning at the repository level means every pushed image is immediately assessed against known vulnerabilities. There is no separate pipeline step to configure — the report is attached to the image in ECR and visible in the console as soon as the push completes.
+
+- **Kubernetes security contexts are defence-in-depth beyond the network perimeter.** Even if a container is compromised, `readOnlyRootFilesystem` prevents writing payloads to disk, `drop: ALL` removes every Linux capability, and `runAsNonRoot` ensures the process cannot escalate to root inside the container. These controls operate independently of IAM and security groups and add a meaningful layer of containment.
+
+- **Topology spread constraints keep the deployment resilient to node and AZ failure.** With `whenUnsatisfiable: DoNotSchedule` and constraints on both `topology.kubernetes.io/zone` and `kubernetes.io/hostname`, Kubernetes guarantees no two pods land on the same node and pods are balanced across availability zones. A single node failure never takes down more than one replica.
