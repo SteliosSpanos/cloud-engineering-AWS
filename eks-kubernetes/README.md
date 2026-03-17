@@ -12,9 +12,7 @@ The cluster access model uses EKS Access Entries, the modern API-based approach 
 
 ## Architecture
 
-![Architecture Diagram](assets/eks.png)
-
-![Architecture Diagram](assets/k8.png)
+![Architecture Diagram](assets/backend.png)
 
 ```
 Your Machine (SSH)
