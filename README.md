@@ -95,6 +95,11 @@ A serverless three-tier web application fully provisioned with Terraform. Static
 
 **Technologies:** Terraform, AWS S3, CloudFront, API Gateway, Lambda (Go), DynamoDB, IAM, CloudWatch
 
+### 17. [EKS Kubernetes Cluster](./eks-kubernetes/)
+A production-style Amazon EKS cluster fully provisioned with Terraform. Worker nodes run in private subnets with no public IPs, all outbound traffic exits through a NAT Gateway, and a bastion EC2 instance is the sole management entry point. Cluster access uses EKS Access Entries, with the bastion IAM role scoped to read-only `kubectl` access. Includes a private ECR repository with immutable tags, image scanning on push, and a lifecycle policy, plus a containerised Flask API deployed as a 3-replica Kubernetes workload with security contexts, resource limits, liveness/readiness probes, and topology spread constraints across nodes and AZs.
+
+**Technologies:** Terraform, Amazon EKS 1.31, EC2 (Bastion + Managed Node Group), VPC (public + private subnets, 2 AZs), NAT Gateway, IAM (EKS Access Entries), CloudWatch, Amazon ECR, Docker, Flask, kubectl, eksctl
+
 ---
 
 ## Goals
